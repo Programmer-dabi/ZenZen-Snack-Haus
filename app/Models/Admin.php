@@ -1,77 +1,53 @@
 <?php
+
 namespace App\Models;
 
-use App\Database\Database;
+use App\Orders\OrderWorkflowFactory;
+use App\Orders\StorePickupWorkflow;
 use DateTimeImmutable;
 use DateTimeZone;
 use InvalidArgumentException;
-use mysqli;
+use PDO;
 use Throwable;
 
-class Admin
+class Admin extends Model
 {
-    public const CATEGORIES = ['Coffee', 'Iced-Coffee', 'Tea', 'Pastries', 'Desserts'];
-    public const STATUSES = ['Placed order', 'Confirmed', 'Preparing', 'Ready for pickup', 'Completed', 'Cancelled'];
+    public const CATEGORIES = Product::CATEGORIES;
+    public const STATUSES = StorePickupWorkflow::STATUSES;
 
+    // Flow: Ask the selected payment workflow for its allowed statuses.
     public static function statusesForPayment(string $method): array
     {
-        return match ($method) {
-            'gcash' => ['Placed order', 'Confirmed', 'Payed', 'Preparing', 'On delivery', 'Completed', 'Cancelled'],
-            'cash_on_delivery' => ['Placed order', 'Confirmed', 'Preparing', 'Delivery', 'Completed', 'Cancelled'],
-            default => self::STATUSES,
-        };
+        return OrderWorkflowFactory::forPayment($method)->statuses();
     }
 
+    // Flow: Ask the workflow which status changes are still permitted.
     public static function availableOrderStatuses(string $method, string $currentStatus): array
     {
-        $normalized = strtolower(trim(preg_replace('/[\s_-]+/', ' ', $currentStatus)));
-        $normalized = str_replace('pick up', 'pickup', $normalized);
-        $current = match ($normalized) {
-            'pending', 'placed order' => 'Placed order',
-            'paid', 'payed' => 'Payed',
-            'ready', 'ready for pickup', 'ready to pickup' => match ($method) {
-                'gcash' => 'Preparing',
-                'cash_on_delivery' => 'Delivery',
-                default => 'Ready for pickup',
-            },
-            'delivery', 'on delivery', 'out for delivery' => $method === 'gcash' ? 'On delivery' : 'Delivery',
-            'complete', 'completed', 'picked up', 'collected' => 'Completed',
-            'cancelled', 'canceled' => 'Cancelled',
-            default => ucfirst($normalized),
-        };
-        if (in_array($current, ['Completed', 'Cancelled'], true)) {
-            return [$current];
-        }
-        $statuses = self::statusesForPayment($method);
-        $position = array_search($current, $statuses, true);
-        // Unrecognized historical statuses cannot safely be ranked.
-        return $position === false ? [$currentStatus] : array_slice($statuses, $position);
+        return OrderWorkflowFactory::forPayment($method)->availableStatuses($currentStatus);
     }
 
-    private mysqli $db;
-
-    public function __construct(?mysqli $db = null)
+    // Flow: Share the PDO connection and use the store's database timezone.
+    public function __construct(?PDO $db = null)
     {
-        $this->db = $db ?? (new Database())->getConnection();
-        $this->db->query("SET time_zone = '+08:00'");
+        parent::__construct($db);
+        $this->connection()->query("SET time_zone = '+08:00'");
     }
 
+    // Flow: Execute a prepared PDO query with its separate parameter values.
     private function rows(string $sql, array $values = []): array
     {
-        $stmt = $this->db->prepare($sql);
-        if ($values !== []) {
-            $types = implode('', array_map(static fn($value) => is_int($value) ? 'i' : 's', $values));
-            $stmt->bind_param($types, ...$values);
-        }
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
+        $stmt = $this->connection()->prepare($sql);
+        $stmt->execute($values);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
         return $rows;
     }
 
+    // Flow: Load products and attach their variants and add-ons for administration.
     public function products(): array
     {
-        $products = (new Product($this->db))->getProductAll();
+        $products = (new Product($this->connection()))->getProductAll();
         foreach ($products as &$product) {
             $product['variants'] = [];
             $product['addons'] = [];
@@ -86,6 +62,7 @@ class Admin
         return $products;
     }
 
+    // Flow: Assemble inventory, sales reports, recent orders, and customer summaries.
     public function dashboard(): array
     {
         $now = new DateTimeImmutable('now', new DateTimeZone('Asia/Manila'));
@@ -146,10 +123,13 @@ class Admin
         ];
     }
 
+    // Flow: Load the selected order and its saved item details for admin review.
     public function order(int $id): ?array
     {
         $order = $this->rows('SELECT * FROM orders WHERE id = ?', [$id])[0] ?? null;
-        if ($order === null) { return null; }
+        if ($order === null) {
+            return null;
+        }
         $order['pickup_time'] = $order['pickup_at'] !== null ? new DateTimeImmutable($order['pickup_at'], new DateTimeZone('Asia/Manila')) : null;
         $order['payment_label'] = Order::paymentLabel($order['payment_method']);
         $order['items'] = $this->rows('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [$id]);
@@ -160,17 +140,21 @@ class Admin
         return $order;
     }
 
+    // Flow: Load a customer summary and recent orders for admin review.
     public function customer(int $id): ?array
     {
         $customer = $this->rows("SELECT u.id, u.name, u.email, u.phone_number, u.created_at, (SELECT COUNT(*) FROM orders WHERE user_id = u.id) AS order_count, (SELECT COALESCE(SUM(total), 0) FROM orders WHERE user_id = u.id AND status = 'Completed') AS amount_spent FROM users u WHERE u.id = ?", [$id])[0] ?? null;
-        if ($customer === null) { return null; }
+        if ($customer === null) {
+            return null;
+        }
         $customer['orders'] = $this->rows('SELECT id, order_number, total, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 10', [$id]);
         return $customer;
     }
 
+    // Flow: Lock the order and enforce the payment workflow before changing status.
     public function updateOrderStatus(int $id, string $status): void
     {
-        $this->db->begin_transaction();
+        $this->connection()->beginTransaction();
         try {
             // Lock the latest status so simultaneous or stale forms cannot move it backward.
             $order = $this->rows('SELECT status, payment_method FROM orders WHERE id = ? FOR UPDATE', [$id])[0] ?? null;
@@ -184,16 +168,15 @@ class Admin
                 throw new InvalidArgumentException('Order status cannot move backward. Completed or cancelled orders cannot be changed. Reload the order to see its current status.');
             }
             if ($status === 'Cancelled') {
-                Order::cancelLockedOrder($this->db, $id);
+                Order::cancelLockedOrder($this->connection(), $id);
             } else {
-                $stmt = $this->db->prepare('UPDATE orders SET status = ? WHERE id = ?');
-                $stmt->bind_param('si', $status, $id);
-                $stmt->execute();
-                $stmt->close();
+                $stmt = $this->connection()->prepare('UPDATE orders SET status = ? WHERE id = ?');
+                $stmt->execute([$status, $id]);
+                $stmt->closeCursor();
             }
-            $this->db->commit();
+            $this->connection()->commit();
         } catch (Throwable $error) {
-            $this->db->rollback();
+            $this->connection()->rollBack();
             throw $error;
         }
     }

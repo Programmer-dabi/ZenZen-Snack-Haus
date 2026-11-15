@@ -1,5 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
 
+  // Keep the current search when switching the menu category.
+  const catalogCategory = document.querySelector('[data-catalog-category]');
+  if (catalogCategory) {
+    catalogCategory.addEventListener('change', () => catalogCategory.form.requestSubmit());
+  }
+
   /* ============================================================
      HAMBURGER MENU
      ============================================================ */
@@ -133,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const variantCategories = ["Coffee", "Tea", "Iced-Coffee", "Pastries", "Desserts"];
+    const variantCategories = Array.from(category.options, (option) => option.value).filter(Boolean);
 
     function updateVariants() {
       const needsVariants = variantCategories.includes(category.value);
@@ -141,10 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (needsVariants && variantList.children.length === 0) {
         variantList.appendChild(createVariantRow());
-      }
-
-      if (!needsVariants) {
-        variantList.replaceChildren();
       }
     }
 
@@ -164,6 +166,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   initProductVariants();
+
+  const productCategory = document.getElementById('category');
+  const flavourAvailability = document.querySelector('[data-flavour-availability]');
+  if (productCategory && flavourAvailability) {
+    const flavourCategories = JSON.parse(flavourAvailability.dataset.flavourCategories);
+    function updateFlavourAvailability() {
+      const hasFlavours = flavourCategories.includes(productCategory.value);
+      flavourAvailability.hidden = !hasFlavours;
+      flavourAvailability.disabled = !hasFlavours;
+    }
+    productCategory.addEventListener('change', updateFlavourAvailability);
+    updateFlavourAvailability();
+  }
+
+
+  const sideSnackAvailability = document.querySelector('[data-side-snack-availability]');
+  if (productCategory && sideSnackAvailability) {
+    function updateSideSnackAvailability() {
+      const mixAndMatch = productCategory.value === 'Mix-n-Match';
+      sideSnackAvailability.hidden = !mixAndMatch;
+      sideSnackAvailability.disabled = !mixAndMatch;
+    }
+    productCategory.addEventListener('change', updateSideSnackAvailability);
+    updateSideSnackAvailability();
+  }
 
   document.querySelectorAll('.gallery').forEach((gallery) => {
     const mainPhoto = gallery.querySelector('.main-photo img');
@@ -223,6 +250,20 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ============================================================
      ORDER TRACKING
      ============================================================ */
+  const gcashPayButton = document.querySelector('[data-gcash-pay]');
+  const gcashPaymentModal = document.getElementById('gcash-payment-modal');
+  if (gcashPayButton && gcashPaymentModal) {
+    gcashPayButton.addEventListener('click', () => gcashPaymentModal.showModal());
+    gcashPaymentModal.addEventListener('click', (event) => {
+      const bounds = gcashPaymentModal.getBoundingClientRect();
+      if (event.target === gcashPaymentModal &&
+          (event.clientX < bounds.left || event.clientX > bounds.right ||
+           event.clientY < bounds.top || event.clientY > bounds.bottom)) {
+        gcashPaymentModal.close();
+      }
+    });
+  }
+
   const trackingPage = document.querySelector('[data-tracking-status-url]');
   if (trackingPage) {
     const heading = trackingPage.querySelector('[data-tracking-heading]');
@@ -339,7 +380,8 @@ document.addEventListener("DOMContentLoaded", () => {
             headers: {'Accept': 'application/json'},
             body: data,
           });
-          const result = await response.json();
+          // Step: Read the server response and place messages with textContent, not HTML.
+        const result = await response.json();
           if (response.status === 401) {
             window.location.assign(result.redirect_url || '/login');
             return;
@@ -380,6 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
      ADD TO CART
      ============================================================ */
   document.querySelectorAll('[data-cart-form]').forEach((form) => {
+    const productUnavailable = form.dataset.productUnavailable === 'true';
     const submitButton = form.querySelector('[type="submit"]');
     const status = form.querySelector('[data-cart-status]');
     const minusButton = form.querySelector('#minusButton');
@@ -398,11 +441,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updatePrice() {
       const variant = form.querySelector('[name="variant_id"]:checked:not(:disabled)');
-      const milk = form.querySelector('[name="milk_preference"]:checked');
       let unitPrice = form.dataset.basePrice ? toCentavos(form.dataset.basePrice) : 0;
 
       if (variant) unitPrice += toCentavos(variant.dataset.price);
-      if (milk) unitPrice += toCentavos(milk.dataset.price);
 
       form.querySelectorAll('[name="addon_ids[]"]:checked:not(:disabled)').forEach((addon) => {
         unitPrice += toCentavos(addon.dataset.price);
@@ -414,7 +455,8 @@ document.addEventListener("DOMContentLoaded", () => {
       minusButton.disabled = quantity === 1;
       totalInput.value = total;
       if (submitButton) {
-        submitButton.value = `Add to Cart ₱${total}`;
+        submitButton.value = productUnavailable ? 'this product is currently unavailable' : `Add to Cart ₱${total}`;
+        if (productUnavailable) submitButton.disabled = true;
         submitButton.dataset.totalprice = total;
       }
       // if (detailPrice) detailPrice.textContent = `₱${total}`;
@@ -431,7 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     form.addEventListener('change', (event) => {
-      if (event.target.matches('[name="variant_id"], [name="milk_preference"], [name="addon_ids[]"]')) {
+      if (event.target.matches('[name="variant_id"], [name="addon_ids[]"]')) {
         updatePrice();
       }
     });
@@ -439,6 +481,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      if (productUnavailable) {
+        status.textContent = 'this product is currently unavailable';
+        return;
+      }
       if (form.dataset.loginRequired === 'true') {
         window.location.assign('/login');
         return;
@@ -448,15 +494,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = new FormData(form);
       const variant = data.get('variant_id');
       const sugar = data.get('sugar_level');
+      const flavour = data.get('flavour');
+      const sideSnack = data.get('side_snack');
 
       if (form.querySelector('[name="variant_id"]') && variant === null) {
         status.textContent = 'Please choose an in-stock variant.';
         return;
       }
 
+      if (form.querySelector('[name="flavour"]') && flavour === null) {
+        status.textContent = 'Please choose an available flavour.';
+        return;
+      }
+
+      if (form.querySelector('[name="side_snack"]') && sideSnack === null) {
+        status.textContent = 'Please choose an available side snack.';
+        return;
+      }
+
+      // Step: Send option IDs and flavour; the server calculates trusted prices.
       const payload = {
+        flavour,
         variant_id: variant === null ? null : Number(variant),
-        milk_preference: data.get('milk_preference'),
+        side_snack: sideSnack,
+        ice_level: data.get('ice_level'),
         sugar_level: sugar === null ? null : Number(sugar),
         addon_ids: data.getAll('addon_ids[]').map(Number),
         quantity: Number(data.get('quantity')),
@@ -475,6 +536,7 @@ document.addEventListener("DOMContentLoaded", () => {
           },
           body: JSON.stringify(payload),
         });
+        // Step: Read the server response and place messages with textContent, not HTML.
         const result = await response.json();
 
         if (response.status === 401) {
@@ -494,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
           : error.message || 'Could not send product options. Please try again.';
       } finally {
         submitting = false;
-        submitButton.disabled = false;
+        submitButton.disabled = productUnavailable;
       }
     });
   });

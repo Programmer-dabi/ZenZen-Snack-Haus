@@ -10,18 +10,14 @@ use Throwable;
 
 class ProducController{
 
-  private array $variantCategories = [
-        'Coffee',
-        'Tea',
-        'Desserts',
-        'Pastries',
-        'Desserts'
-    ];
+  private array $variantCategories = Product::CATEGORIES;
+    // Flow: Render the legacy product form with the current category and flavour allowlists.
     public function index(){
-        Flight::render('addproduct.twig');
+        Flight::render('addproduct.twig', ['allowed_categories' => Product::CATEGORIES, 'allowed_flavours' => Product::FLAVOURS]);
     }
     
  // Handle the product creation form.
+    // Flow: Validate and upload a product through the retained legacy creation method.
     public function add(): void
     {
         // Only accept POST requests.
@@ -40,13 +36,7 @@ class ProducController{
             $description = trim($_POST['description'] ?? '');
             $availability = $_POST['availability'] ?? 'Available';
             // die($name .' '. $category .' '. $description .' '. $availability);
-            $allowedCategories = [
-                'Coffee',
-                'Iced-Coffee',
-                'Tea',
-                'Pastries',
-                'Desserts'
-            ];
+            $allowedCategories = Product::CATEGORIES;
 
             if ($name === '' || mb_strlen($name) > 150) {
                 throw new InvalidArgumentException(
@@ -156,7 +146,7 @@ class ProducController{
                     ];
                 }
 
-                // Base price is the cheapest variant price.
+                // Legacy path: use the submitted base price (this branch has no price validation).
                 $basePrice = $_POST['price'];
 
             } else {
@@ -251,6 +241,10 @@ class ProducController{
             $data = [
                 'product_name' => $name,
                 'category' => $category,
+                'unavailable_side_snacks' => $category === 'Mix-n-Match'
+                    ? Product::encodeUnavailableSideSnacks($_POST['unavailable_side_snacks'] ?? []) : null,
+                'unavailable_flavours' => in_array($category, Product::FLAVOUR_CATEGORIES, true)
+                    ? Product::encodeUnavailableFlavours($_POST['unavailable_flavours'] ?? []) : null,
                 'description' => $description,
                 'base_price' => $basePrice,
                 'availability' => $availability
@@ -385,6 +379,7 @@ class ProducController{
         }
     }
 
+// Flow: Load a product and render its available choices for the customer.
 public function openProduct($id): void
 {
     try {
@@ -407,7 +402,6 @@ public function openProduct($id): void
 
         Flight::render('product.twig', [
             'products' => $products,
-            'milk_options' => Cart::milkOptions(),
             'is_logged_in' => AuthMiddleware::isLoggedIn(),
             'cart_count' => (new Cart())->getCount(),
         ]);
@@ -424,6 +418,7 @@ public function openProduct($id): void
     }
 }
 
+    // Flow: Return product details using the existing Products JSON response key.
     public function passData($id)
     {
         header('Content-Type: application/json');
@@ -465,6 +460,7 @@ public function openProduct($id): void
     }
     }
 
+    // Flow: Require login and validate posted JSON before asking Cart to save the selection.
     public function addToCart($id): void
     {
         if (!AuthMiddleware::requireLogin(true)) {
@@ -495,18 +491,24 @@ public function openProduct($id): void
             return;
         }
 
-        foreach (['variant_id', 'milk_preference', 'sugar_level', 'addon_ids'] as $field) {
+        foreach (['variant_id', 'sugar_level', 'addon_ids'] as $field) {
             if (!property_exists($data, $field)) {
                 Flight::json(['success' => false, 'message' => 'Missing field: ' . $field], 422);
                 return;
             }
         }
 
+        $flavour = $data->flavour ?? null;
+        $sideSnack = $data->side_snack ?? null;
+        $iceLevel = $data->ice_level ?? null;
         $quantity = property_exists($data, 'quantity') ? $data->quantity : 1;
         if (
             ($data->variant_id !== null && (!is_int($data->variant_id) || $data->variant_id < 1)) ||
-            !in_array($data->milk_preference, [null, 'regular', 'oat', 'soy'], true) ||
+            ($data->milk_preference ?? null) !== null ||
+            ($sideSnack !== null && !is_string($sideSnack)) ||
+            ($iceLevel !== null && !is_string($iceLevel)) ||
             !in_array($data->sugar_level, [null, 100, 75, 50, 0], true) ||
+            ($flavour !== null && !is_string($flavour)) ||
             !is_array($data->addon_ids) ||
             !is_int($quantity) || $quantity < 1 || $quantity > 99
         ) {
@@ -523,18 +525,20 @@ public function openProduct($id): void
 
         try {
             $cartModel = new Cart();
-            $key = $cartModel->addToCart(
+            $itemId = $cartModel->addToCart(
                 $productId,
                 $data->variant_id,
                 $data->addon_ids,
                 $quantity,
-                $data->milk_preference,
-                $data->sugar_level
+                $sideSnack,
+                $data->sugar_level,
+                $flavour,
+                $iceLevel
             );
             Flight::json([
                 'success' => true,
                 'message' => 'Product added to your cart.',
-                'cart_key' => $key,
+                'cart_item_id' => $itemId,
                 'redirect_url' => '/cart',
             ]);
         } catch (InvalidArgumentException $error) {

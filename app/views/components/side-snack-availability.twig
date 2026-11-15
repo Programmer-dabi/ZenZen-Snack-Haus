@@ -1,0 +1,12 @@
+<fieldset class="flavour-availability" data-side-snack-availability {% if category != 'Mix-n-Match' %}hidden disabled{% endif %}>
+  <legend>Side Snacks availability</legend>
+  <p>All side snacks are available by default. Check a snack to mark it unavailable for this product.</p>
+  <div class="flavour-availability-grid">
+    {% for snack in constant('App\\Models\\Product::SIDE_SNACKS') %}
+    <label>
+      <input type="checkbox" name="unavailable_side_snacks[]" value="{{ snack }}" {% if snack in unavailable_side_snacks %}checked{% endif %} />
+      {{ snack }} — unavailable
+    </label>
+    {% endfor %}
+  </div>
+</fieldset>

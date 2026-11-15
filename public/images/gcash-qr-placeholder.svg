@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" role="img" aria-labelledby="title desc">
+  <title id="title">GCash QR code placeholder</title>
+  <desc id="desc">An empty image area for the store's future payment QR code.</desc>
+  <rect width="360" height="360" rx="12" fill="#eef5e9"/>
+  <rect x="28" y="28" width="304" height="304" rx="8" fill="#fff" stroke="#d6e3d2" stroke-width="2" stroke-dasharray="8 8"/>
+  <g fill="none" stroke="#226344" stroke-width="4" stroke-linecap="round">
+    <path d="M132 156v-24h24M204 132h24v24M228 204v24h-24M156 228h-24v-24"/>
+  </g>
+  <g fill="#1d3528" font-family="Arial, sans-serif" text-anchor="middle">
+    <text x="180" y="180" font-size="22" font-weight="700">GCash QR</text>
+    <text x="180" y="204" font-size="14">Image placeholder</text>
+    <text x="180" y="280" font-size="13">Zen-Zen Snack Haus</text>
+  </g>
+</svg>

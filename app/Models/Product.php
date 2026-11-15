@@ -1,110 +1,196 @@
 <?php
 namespace App\Models;
 
-use App\Database\Database;
-use mysqli;
+use PDO;
 
-class Product{
-    private mysqli $db;
+class Product extends Model
+{
 
-        public function __construct(?mysqli $db = null)
-        {
-            $this->db = $db ?? (new Database())->getConnection();
+    public const CATEGORIES = ['Milo Series', 'Snacks', 'Fruit Drinks', 'Mix-n-Match','Bun-Saya', 'Matcha Series', 'Coffee Series'];
+    public const FLAVOUR_CATEGORIES = ['Fruit Drinks', 'Mix-n-Match'];
+    public const SIDE_SNACKS = ['Fries', 'Cheese stick', 'Kikiam', 'Fishball', 'Siomai', 'Pancake'];
+    public const ICE_LEVELS = ['regular' => 'Regular ice', 'less' => 'Less ice', 'hot' => 'Hot coffee'];
+    public const FLAVOURS = ['Green Apple', 'Grapes', 'Lychee', 'Mango', 'Blueberry', 'Watermelon', 'Strawberry', 'Orange'];
+
+    // Flow: Validate the unavailable-flavour list before encoding it for storage.
+    public static function encodeUnavailableFlavours(mixed $values): ?string
+    {
+        if (!is_array($values) || count($values) > count(self::FLAVOURS)) {
+            throw new \InvalidArgumentException('Select valid unavailable flavours.');
         }
+        foreach ($values as $value) {
+            if (!is_string($value) || !in_array($value, self::FLAVOURS, true)) {
+                throw new \InvalidArgumentException('Select valid unavailable flavours.');
+            }
+        }
+        return $values === [] ? null : json_encode(array_values(array_unique($values)), JSON_THROW_ON_ERROR);
+    }
+
+    // Flow: Build the eight flavour choices and mark blocked choices unavailable.
+    public static function flavourOptions(?string $unavailable): array
+    {
+        $blocked = $unavailable === null ? [] : json_decode($unavailable, true, 512, JSON_THROW_ON_ERROR);
+        return array_map(static fn(string $name): array => [
+            'name' => $name, 'available' => !in_array($name, $blocked, true),
+        ], self::FLAVOURS);
+    }
+
+    // Flow: Reject missing, invalid, or unavailable flavours where a selection is required.
+    public static function validateFlavour(array $product, ?string $flavour, bool $required = true): void
+    {
+        if ($flavour === null) {
+            if ($required && in_array($product['category'], self::FLAVOUR_CATEGORIES, true)) {
+                throw new \InvalidArgumentException('Please choose an available flavour.');
+            }
+            return;
+        }
+        if (!in_array($product['category'], self::FLAVOUR_CATEGORIES, true) || !in_array($flavour, self::FLAVOURS, true)) {
+            throw new \InvalidArgumentException('Invalid flavour for this product.');
+        }
+        foreach (self::flavourOptions($product['unavailable_flavours'] ?? null) as $option) {
+            if ($option['name'] === $flavour && !$option['available']) {
+                throw new \InvalidArgumentException($flavour . ' is currently unavailable. Please choose another flavour.');
+            }
+        }
+    }
+
+    // Flow: Accept ice and hot-coffee choices only for Coffee Series products.
+    public static function validateIceLevel(array $product, ?string $iceLevel): void
+    {
+        if ($iceLevel === null) {
+            return; // Existing cart rows may predate the ice-level chooser.
+        }
+        if ($product['category'] !== 'Coffee Series' || !array_key_exists($iceLevel, self::ICE_LEVELS)) {
+            throw new \InvalidArgumentException('Choose a valid ice level for a Coffee Series product.');
+        }
+    }
+
+    // Flow: Validate unavailable side snacks before storing their names as JSON.
+    public static function encodeUnavailableSideSnacks(mixed $values): ?string
+    {
+        if (!is_array($values) || count($values) > count(self::SIDE_SNACKS)) {
+            throw new \InvalidArgumentException('Select valid unavailable side snacks.');
+        }
+        foreach ($values as $value) {
+            if (!is_string($value) || !in_array($value, self::SIDE_SNACKS, true)) {
+                throw new \InvalidArgumentException('Select valid unavailable side snacks.');
+            }
+        }
+        return $values === [] ? null : json_encode(array_values(array_unique($values)), JSON_THROW_ON_ERROR);
+    }
+
+    public static function sideSnackOptions(?string $unavailable): array
+    {
+        $blocked = $unavailable === null ? [] : json_decode($unavailable, true, 512, JSON_THROW_ON_ERROR);
+        return array_map(static fn(string $name): array => [
+            'name' => $name, 'available' => !in_array($name, $blocked, true),
+        ], self::SIDE_SNACKS);
+    }
+
+    // Flow: Require an available side snack only for Mix-n-Match products.
+    public static function validateSideSnack(array $product, ?string $snack): void
+    {
+        if ($product['category'] !== 'Mix-n-Match') {
+            if ($snack !== null) {
+                throw new \InvalidArgumentException('Side snacks are only available for Mix-n-Match products.');
+            }
+            return;
+        }
+        if ($snack === null || !in_array($snack, self::SIDE_SNACKS, true)) {
+            throw new \InvalidArgumentException('Please choose an available side snack.');
+        }
+        foreach (self::sideSnackOptions($product['unavailable_side_snacks'] ?? null) as $option) {
+            if ($option['name'] === $snack && !$option['available']) {
+                throw new \InvalidArgumentException($snack . ' is currently unavailable. Please choose another side snack.');
+            }
+        }
+    }
 
          // 1. Insert the main product.
+    // Flow: Save the main product fields with PDO parameters and return its numeric ID.
     public function createProduct(array $data): int
     {
         $sql = "INSERT INTO products
                 (product_name, category, description,
-                 base_price, availability)
-                VALUES (?, ?, ?, ?, ?)";
+                 base_price, availability, unavailable_flavours, unavailable_side_snacks)
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->connection()->prepare($sql);
 
-        $stmt->bind_param(
-            "sssds",
-            $data['product_name'],
+        $unavailableFlavours = $data['unavailable_flavours'] ?? null;
+        $stmt->execute([$data['product_name'],
             $data['category'],
             $data['description'],
             $data['base_price'],
-            $data['availability']
-        );
+            $data['availability'],
+            $unavailableFlavours,
+            $data['unavailable_side_snacks'] ?? null]);
 
-        $stmt->execute();
 
-        $productId = $this->db->insert_id;
+        $productId = (int) $this->connection()->lastInsertId();
 
-        $stmt->close();
+        $stmt->closeCursor();
 
         return $productId;
     }
 
 
     // 2. Insert one product image.
+    // Flow: Store one validated image path and its display order.
     public function addImage(int $productId,string $imagePath,int $imageOrder): void {
         $sql = "INSERT INTO product_images
                 (product_id, image_path, image_order)
                 VALUES (?, ?, ?)";
 
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->connection()->prepare($sql);
 
-        $stmt->bind_param(
-            "isi",
-            $productId,
+        $stmt->execute([$productId,
             $imagePath,
-            $imageOrder
-        );
+            $imageOrder]);
 
-        $stmt->execute();
-        $stmt->close();
+        $stmt->closeCursor();
     }
 
 
     // 3. Insert one add-on.
+    // Flow: Store one add-on name and price for its product.
     public function addAddon(int $productId,string $addonName,float $addonPrice): void {
         $sql = "INSERT INTO product_addons
                 (product_id, addon_name, addon_price)
                 VALUES (?, ?, ?)";
 
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->connection()->prepare($sql);
 
-        $stmt->bind_param(
-            "isd",
-            $productId,
+        $stmt->execute([$productId,
             $addonName,
-            $addonPrice
-        );
+            $addonPrice]);
 
-        $stmt->execute();
-        $stmt->close();
+        $stmt->closeCursor();
     }
 
 
     // 4. Insert one size variant.
+    // Flow: Store one product variant and its initial stock.
     public function addVariant(int $productId,string $sizeOz,float $price,int $stock): void {
         $sql = "INSERT INTO product_variants
                 (product_id, size_oz, price, stock_quantity)
                 VALUES (?, ?, ?, ?)";
 
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->connection()->prepare($sql);
 
-        $stmt->bind_param(
-            "isdi",
-            $productId,
+        $stmt->execute([$productId,
             $sizeOz,
             $price,
-            $stock
-        );
+            $stock]);
 
-        $stmt->execute();
-        $stmt->close();
+        $stmt->closeCursor();
     }
 
 
     // 5. Coordinate all inserts in one transaction.
+    // Flow: Save a product, images, add-ons, and variants together in one transaction.
     public function createComplete(array $data,array $images,array $addons,array $variants): int {
-        $this->db->begin_transaction();
+        $this->connection()->beginTransaction();
 
         try {
             // Create the main product first.
@@ -139,43 +225,42 @@ class Product{
             }
 
             // Commit only after every insert succeeds.
-            $this->db->commit();
+            $this->connection()->commit();
 
             return $productId;
 
         } catch (\Throwable $error) {
-            $this->db->rollback();
+            $this->connection()->rollBack();
 
             throw $error;
         }
     }
+    // Flow: Create or update a complete product while preserving existing variant inventory.
     public function saveForAdmin(?int $id, array $data, array $images, array $addons, array $variants): int
     {
         if ($id === null) {
             return $this->createComplete($data, $images, $addons, $variants);
         }
-        $this->db->begin_transaction();
+        $this->connection()->beginTransaction();
         try {
-            $stmt = $this->db->prepare('SELECT id FROM products WHERE id = ? FOR UPDATE');
-            $stmt->bind_param('i', $id);
-            $stmt->execute();
-            $exists = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+            $stmt = $this->connection()->prepare('SELECT id FROM products WHERE id = ? FOR UPDATE');
+            $stmt->execute([$id]);
+            $exists = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            $stmt->closeCursor();
             if ($exists === null) {
                 throw new \InvalidArgumentException('Product not found.');
             }
-            $stmt = $this->db->prepare('UPDATE products SET product_name = ?, category = ?, description = ?, base_price = ?, availability = ? WHERE id = ?');
-            $stmt->bind_param('sssdsi', $data['product_name'], $data['category'], $data['description'], $data['base_price'], $data['availability'], $id);
-            $stmt->execute();
-            $stmt->close();
+            $stmt = $this->connection()->prepare('UPDATE products SET product_name = ?, category = ?, description = ?, base_price = ?, availability = ?, unavailable_flavours = ?, unavailable_side_snacks = ? WHERE id = ?');
+            $unavailableFlavours = $data['unavailable_flavours'] ?? null;
+            $stmt->execute([$data['product_name'], $data['category'], $data['description'], $data['base_price'], $data['availability'], $unavailableFlavours, $data['unavailable_side_snacks'] ?? null, $id]);
+            $stmt->closeCursor();
 
             foreach (['product_variants' => $variants, 'product_addons' => $addons] as $table => $rows) {
                 // Table names come only from the fixed map above.
-                $stmt = $this->db->prepare("SELECT id FROM $table WHERE product_id = ? FOR UPDATE");
-                $stmt->bind_param('i', $id);
-                $stmt->execute();
-                $remaining = array_fill_keys(array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'id'), true);
-                $stmt->close();
+                $stmt = $this->connection()->prepare("SELECT id FROM $table WHERE product_id = ? FOR UPDATE");
+                $stmt->execute([$id]);
+                $remaining = array_fill_keys(array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'), true);
+                $stmt->closeCursor();
                 $used = [];
                 foreach ($rows as $row) {
                     $rowId = $row['id'] ?? 0;
@@ -185,18 +270,16 @@ class Product{
                     if ($table === 'product_variants') {
                         if ($rowId) {
                             // Existing inventory changes only through the variant stock form.
-                            $stmt = $this->db->prepare('UPDATE product_variants SET size_oz = ?, price = ? WHERE id = ? AND product_id = ?');
-                            $stmt->bind_param('sdii', $row['size_oz'], $row['price'], $rowId, $id);
-                            $stmt->execute();
-                            $stmt->close();
+                            $stmt = $this->connection()->prepare('UPDATE product_variants SET size_oz = ?, price = ? WHERE id = ? AND product_id = ?');
+                            $stmt->execute([$row['size_oz'], $row['price'], $rowId, $id]);
+                            $stmt->closeCursor();
                         } else {
                             $this->addVariant($id, $row['size_oz'], $row['price'], $row['stock']);
                         }
                     } elseif ($rowId) {
-                        $stmt = $this->db->prepare('UPDATE product_addons SET addon_name = ?, addon_price = ? WHERE id = ? AND product_id = ?');
-                        $stmt->bind_param('sdii', $row['name'], $row['price'], $rowId, $id);
-                        $stmt->execute();
-                        $stmt->close();
+                        $stmt = $this->connection()->prepare('UPDATE product_addons SET addon_name = ?, addon_price = ? WHERE id = ? AND product_id = ?');
+                        $stmt->execute([$row['name'], $row['price'], $rowId, $id]);
+                        $stmt->closeCursor();
                     } else {
                         $this->addAddon($id, $row['name'], $row['price']);
                     }
@@ -205,69 +288,86 @@ class Product{
                     }
                 }
                 foreach (array_diff_key($remaining, $used) as $rowId => $_) {
-                    $stmt = $this->db->prepare("DELETE FROM $table WHERE id = ? AND product_id = ?");
-                    $stmt->bind_param('ii', $rowId, $id);
-                    $stmt->execute();
-                    $stmt->close();
+                    $stmt = $this->connection()->prepare("DELETE FROM $table WHERE id = ? AND product_id = ?");
+                    $stmt->execute([$rowId, $id]);
+                    $stmt->closeCursor();
                 }
             }
             foreach ($images as $image) {
-                $stmt = $this->db->prepare('DELETE FROM product_images WHERE product_id = ? AND image_order = ?');
-                $stmt->bind_param('ii', $id, $image['order']);
-                $stmt->execute();
-                $stmt->close();
+                $stmt = $this->connection()->prepare('DELETE FROM product_images WHERE product_id = ? AND image_order = ?');
+                $stmt->execute([$id, $image['order']]);
+                $stmt->closeCursor();
                 $this->addImage($id, $image['path'], $image['order']);
             }
-            $this->db->commit();
+            $this->connection()->commit();
             return $id;
         } catch (\Throwable $error) {
-            $this->db->rollback();
+            $this->connection()->rollBack();
             throw $error;
         }
     }
 
+    // Flow: Check ownership and stale stock values before saving the new inventory count.
     public function setVariantStock(int $productId, int $variantId, int $quantity, int $expected): void
     {
         if ($productId < 1 || $variantId < 1 || $quantity < 0 || $quantity > 4294967295 || $expected < 0) {
             throw new \InvalidArgumentException('Enter a valid variant and a non-negative whole stock quantity.');
         }
-        $this->db->begin_transaction();
+        $this->connection()->beginTransaction();
         try {
-            $stmt = $this->db->prepare('SELECT stock_quantity FROM product_variants WHERE id = ? AND product_id = ? FOR UPDATE');
-            $stmt->bind_param('ii', $variantId, $productId);
-            $stmt->execute();
-            $variant = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+            $stmt = $this->connection()->prepare('SELECT stock_quantity FROM product_variants WHERE id = ? AND product_id = ? FOR UPDATE');
+            $stmt->execute([$variantId, $productId]);
+            $variant = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            $stmt->closeCursor();
             if ($variant === null) {
                 throw new \InvalidArgumentException('The selected variant does not belong to this product.');
             }
             if ((int) $variant['stock_quantity'] !== $expected) {
                 throw new \InvalidArgumentException('Stock changed since this form was opened. Review the current stock and try again.');
             }
-            $stmt = $this->db->prepare('UPDATE product_variants SET stock_quantity = ? WHERE id = ? AND product_id = ?');
-            $stmt->bind_param('iii', $quantity, $variantId, $productId);
-            $stmt->execute();
-            $stmt->close();
-            $this->db->commit();
+            $stmt = $this->connection()->prepare('UPDATE product_variants SET stock_quantity = ? WHERE id = ? AND product_id = ?');
+            $stmt->execute([$quantity, $variantId, $productId]);
+            $stmt->closeCursor();
+            $this->connection()->commit();
         } catch (\Throwable $error) {
-            $this->db->rollback();
+            $this->connection()->rollBack();
             throw $error;
         }
     }
 
+    // Flow: Delete the requested product and reject an unknown ID.
     public function deleteProduct(int $id): void
     {
-        $stmt = $this->db->prepare('DELETE FROM products WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $deleted = $stmt->affected_rows;
-        $stmt->close();
+        $stmt = $this->connection()->prepare('DELETE FROM products WHERE id = ?');
+        $stmt->execute([$id]);
+        $deleted = $stmt->rowCount();
+        $stmt->closeCursor();
         if ($deleted !== 1) {
             throw new \InvalidArgumentException('Product not found.');
         }
     }
 
-    public function getProductAll() {
+    // Flow: Load menu products and attach their images.
+    public function getProductAll(string $search = '', string $category = '') {
+        if (mb_strlen($search) > 200) {
+            throw new \InvalidArgumentException('Search must be 200 characters or fewer.');
+        }
+        if ($category !== '' && !in_array($category, self::CATEGORIES, true)) {
+            throw new \InvalidArgumentException('Choose a valid product category.');
+        }
+        $conditions = [];
+        $values = [];
+        if ($search !== '') {
+            // Treat LIKE wildcard characters as literal search text.
+            $pattern = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search) . '%';
+            $conditions[] = "(p.product_name LIKE ? ESCAPE '!' OR p.description LIKE ? ESCAPE '!')";
+            array_push($values, $pattern, $pattern);
+        }
+        if ($category !== '') {
+            $conditions[] = 'p.category = ?';
+            $values[] = $category;
+        }
+        $where = $conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions);
         $sqlmaintable = "SELECT
                 p.id,
                 p.product_name,
@@ -275,12 +375,16 @@ class Product{
                 p.description,
                 p.base_price,
                 p.availability,
+                p.unavailable_flavours,
+                p.unavailable_side_snacks,
                 p.created_at
             FROM products p
-            ORDER BY p.created_at DESC";
+            $where
+            ORDER BY p.created_at DESC, p.id DESC";
 
 
-        $result = $this->db->query($sqlmaintable);
+        $result = $this->connection()->prepare($sqlmaintable);
+        $result->execute($values);
 
         if (!$result) {
             throw new \RuntimeException(
@@ -288,18 +392,51 @@ class Product{
             );
         }
 
-        $sqlImageTable = '';
-        $rowmain = $result->fetch_all(MYSQLI_ASSOC);
+        $rowmain = $result->fetchAll(PDO::FETCH_ASSOC);
+        $result->closeCursor();
+        return $this->withListingImages($rowmain);
+    }
 
-            $sqlImageTable = "SELECT
+    // Flow: Rank sold products by completed-order quantity, then revenue and ID.
+    public function getBestSellers(): array
+    {
+        $result = $this->connection()->query(
+            "SELECT p.*, sales.sold
+             FROM products p
+             JOIN (
+                 SELECT i.product_id, SUM(i.quantity) AS sold, SUM(i.line_total) AS revenue
+                 FROM order_items i JOIN orders o ON o.id = i.order_id
+                 WHERE o.status = 'Completed'
+                 GROUP BY i.product_id
+             ) sales ON sales.product_id = p.id
+             ORDER BY sales.sold DESC, sales.revenue DESC, p.id ASC
+             LIMIT 3"
+        );
+        $rows = $result->fetchAll(PDO::FETCH_ASSOC);
+        $result->closeCursor();
+        return $this->withListingImages($rows);
+    }
+
+    // Flow: Attach ordered images while preserving listing order and product ID keys.
+    private function withListingImages(array $rowmain): array
+    {
+        if ($rowmain === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($rowmain), '?'));
+        $sqlImageTable = "SELECT
                 p.id,
                 p.product_id,
                 p.image_path,
                 p.image_order
             FROM product_images p
-            ORDER BY p.image_order ASC";
-        $resultimage = $this->db->query($sqlImageTable);
-        $rowImage = $resultimage->fetch_all(MYSQLI_ASSOC);
+            WHERE p.product_id IN ($placeholders)
+            ORDER BY p.image_order ASC, p.id ASC";
+        $resultimage = $this->connection()->prepare($sqlImageTable);
+        $resultimage->execute(array_column($rowmain, 'id'));
+        $rowImage = $resultimage->fetchAll(PDO::FETCH_ASSOC);
+        $resultimage->closeCursor();
         $products = [];
 
         foreach ($rowmain as $valuemain) {
@@ -317,12 +454,10 @@ class Product{
             }
         }
 
-        
-
-            
-        return($products);
+        return $products;
     }
 
+    // Flow: Allow only known search columns, then load product images, variants, add-ons, and flavours.
     public function getProduct(string $params, mixed $value)
     {
         // 1. Allow only specific column names.
@@ -361,19 +496,20 @@ class Product{
                     p.description,
                     p.base_price,
                     p.availability,
+                    p.unavailable_flavours,
+                    p.unavailable_side_snacks,
                     p.created_at
                 FROM products p
                 WHERE $column = ?
                 ORDER BY p.created_at DESC";
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('s', $value);
-        $stmt->execute();
+        $stmt = $this->connection()->prepare($sql);
+        $stmt->execute([$value]);
 
-        $result = $stmt->get_result();
-        $rowmain = $result->fetch_all(MYSQLI_ASSOC);
+        $result = $stmt;
+        $rowmain = $result->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmt->close();
+        $stmt->closeCursor();
 
         // 5. Build the associative array.
         $products = [];
@@ -395,17 +531,14 @@ class Product{
                     WHERE product_id = ?
                     ORDER BY image_order ASC";
 
-        $imageStmt = $this->db->prepare($sqlImage);
+        $imageStmt = $this->connection()->prepare($sqlImage);
 
         foreach ($products as $productId => &$product) {
-            $imageStmt->bind_param('i', $productId);
-            $imageStmt->execute();
+            $imageStmt->execute([$productId]);
 
-            $imageResult = $imageStmt->get_result();
+            $imageResult = $imageStmt;
 
-            $product['images'] = $imageResult->fetch_all(
-                MYSQLI_ASSOC
-            );
+            $product['images'] = $imageResult->fetchAll(PDO::FETCH_ASSOC);
         }
 
         /* Fetch custom sizes and prices for each product */
@@ -416,7 +549,7 @@ class Product{
             ORDER BY id ASC
         ";
 
-        $variantStmt = $this->db->prepare($variantSql);
+        $variantStmt = $this->connection()->prepare($variantSql);
 
         /* Fetch custom add-ons for each product */
         $addonSql = "
@@ -426,31 +559,32 @@ class Product{
             ORDER BY id ASC
         ";
 
-        $addonStmt = $this->db->prepare($addonSql);
+        $addonStmt = $this->connection()->prepare($addonSql);
 
         foreach ($products as $productId => &$product) {
 
             // Get variants belonging to this product
-            $variantStmt->bind_param("i", $productId);
-            $variantStmt->execute();
+            $variantStmt->execute([$productId]);
 
             $product['variants'] = $variantStmt
-                ->get_result()
-                ->fetch_all(MYSQLI_ASSOC);
+                ->fetchAll(PDO::FETCH_ASSOC);
 
             // Get add-ons belonging to this product
-            $addonStmt->bind_param("i", $productId);
-            $addonStmt->execute();
+            $addonStmt->execute([$productId]);
+
+            $product['flavours'] = in_array($product['category'], self::FLAVOUR_CATEGORIES, true)
+                ? self::flavourOptions($product['unavailable_flavours']) : [];
+            $product['side_snacks'] = $product['category'] === 'Mix-n-Match'
+                ? self::sideSnackOptions($product['unavailable_side_snacks']) : [];
 
             $product['addons'] = $addonStmt
-                ->get_result()
-                ->fetch_all(MYSQLI_ASSOC);
+                ->fetchAll(PDO::FETCH_ASSOC);
         }
 
         unset($product);
 
-        $variantStmt->close();
-        $addonStmt->close();
+        $variantStmt->closeCursor();
+        $addonStmt->closeCursor();
 
         return $products;
     }

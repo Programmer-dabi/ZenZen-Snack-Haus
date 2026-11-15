@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Middleware\AuthMiddleware;
+use App\Orders\OrderWorkflowFactory;
 use DateTimeImmutable;
 use DateTimeZone;
 use Flight;
@@ -12,12 +13,14 @@ use Throwable;
 
 class OrderController
 {
+    // Flow: Validate checkout details and its CSRF token before creating the order.
     public function place(): void
     {
         if (!AuthMiddleware::requireLogin(str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json'))) {
             return;
         }
 
+        // Step 1: Read customer details and prepare field-specific validation errors.
         $values = [];
         foreach (['name', 'phone_number', 'email', 'payment_method', 'pickup_at', 'notes', 'barangay', 'street', 'house_no'] as $field) {
             $values[$field] = is_string($_POST[$field] ?? null) ? trim($_POST[$field], " \t\n\r\v") : '';
@@ -65,8 +68,9 @@ class OrderController
         if (mb_strlen($values['notes']) > 2000) {
             $errors['notes'] = 'Order notes must be 2,000 characters or fewer.';
         }
-        $token = $_POST['checkout_token'] ?? null;
-        if (!is_string($token) || !isset($_SESSION['checkout_token']) || !hash_equals($_SESSION['checkout_token'], $token)) {
+        // Step 2: Reject submissions that do not match the session's cart CSRF token.
+        $token = $_POST['csrf_token'] ?? null;
+        if (!is_string($token) || !isset($_SESSION['cart_csrf']) || !hash_equals($_SESSION['cart_csrf'], $token)) {
             $errors['form'] = 'Your checkout form has expired. Please review your details and submit again.';
         }
         if ($errors !== []) {
@@ -77,8 +81,9 @@ class OrderController
         try {
             $details = $values;
             $details['pickup_at'] = $pickup ? $pickup->format('Y-m-d H:i:s') : null;
-            $order = (new Order())->create($details, $token);
-            $_SESSION['checkout_completed_token'] = $token;
+            // Step 3: Save the validated order through the shared PDO model connection.
+            $order = (new Order())->create($details);
+            // Step 4: Clear temporary form values and redirect to the saved confirmation.
             unset($_SESSION['checkout_values'], $_SESSION['checkout_errors']);
             Flight::redirect('/order-success/' . $order['order_number'], 303);
         } catch (InvalidArgumentException $error) {
@@ -89,6 +94,7 @@ class OrderController
         }
     }
 
+    // Flow: Check the order number and display only the current customer's confirmation.
     public function success(string $number): void
     {
         try {
@@ -112,6 +118,7 @@ class OrderController
         }
     }
 
+    // Flow: Validate the order ID and display tracking using its payment workflow.
     public function tracking(string $id): void
     {
         $orderId = filter_var($id, FILTER_VALIDATE_INT);
@@ -127,7 +134,8 @@ class OrderController
                 return;
             }
             $order['pickup_time'] = $order['pickup_at'] !== null ? new DateTimeImmutable($order['pickup_at'], new DateTimeZone('Asia/Manila')) : null;
-            Flight::render('tracking.twig', array_merge($this->trackingState($order['status'], $order['payment_method']), [
+            $workflow = OrderWorkflowFactory::forPayment($order['payment_method']);
+            Flight::render('tracking.twig', array_merge($workflow->trackingState($order['status']), [
                 'order' => $order,
                 'cart_count' => (new Cart())->getCount(),
             ]));
@@ -137,6 +145,7 @@ class OrderController
         }
     }
 
+    // Flow: Return private tracking JSON for an order owned by the current customer.
     public function trackingStatus(string $id): void
     {
         Flight::response()->header('Cache-Control', 'no-store, private');
@@ -151,48 +160,15 @@ class OrderController
                 Flight::json(['success' => false, 'message' => 'Order not found.'], 404);
                 return;
             }
-            Flight::json(array_merge(['success' => true], $this->trackingState($order['status'], $order['payment_method'])));
+            $workflow = OrderWorkflowFactory::forPayment($order['payment_method']);
+            Flight::json(array_merge(['success' => true], $workflow->trackingState($order['status'])));
         } catch (Throwable $error) {
             error_log('Order status refresh failed (' . get_class($error) . ', code ' . $error->getCode() . ').');
             Flight::json(['success' => false, 'message' => 'Could not refresh your order status.'], 500);
         }
     }
 
-    private function trackingState(string $status, string $paymentMethod): array
-    {
-        $gcash = $paymentMethod === 'gcash';
-        $delivery = $gcash || $paymentMethod === 'cash_on_delivery';
-        $steps = match ($paymentMethod) {
-            'gcash' => ['Placed order', 'Order confirmed', 'Payed', 'Preparing your order', 'On delivery', 'Completed'],
-            'cash_on_delivery' => ['Placed order', 'Order confirmed', 'Preparing your order', 'Delivery', 'Completed'],
-            default => ['Placed order', 'Order confirmed', 'Preparing your order', 'Ready for pickup', 'Completed'],
-        };
-        $normalized = strtolower(trim(preg_replace('/[\s_-]+/', ' ', $status)));
-        $normalized = str_replace('pick up', 'pickup', $normalized);
-        [$step, $heading, $class] = match ($normalized) {
-            'placed order' => [1, 'Your order has been placed and is awaiting confirmation.', 'placed_order'],
-            'confirmed' => [2, 'We have received your order.', 'confirmed'],
-            'pending' => [1, 'We have received your order.', 'pending'],
-            'preparing' => [$gcash ? 4 : 3, 'Your order is being prepared.', 'preparing'],
-            'ready', 'ready for pickup', 'ready to pickup' => $delivery
-                ? ($gcash ? [4, 'Your order is ready for delivery.', 'ready'] : [4, 'Your order is on delivery.', 'delivery'])
-                : [4, 'Your order is ready for pickup.', 'ready'],
-            'paid', 'payed' => $gcash ? [3, 'Your payment has been confirmed.', 'payed'] : [0, 'Your order status', ''],
-            'delivery', 'on delivery', 'out for delivery' => $delivery
-                ? [$gcash ? 5 : 4, 'Your order is on delivery.', 'delivery'] : [0, 'Your order status', ''],
-            'completed', 'complete', 'picked up', 'collected' => [count($steps), 'Your order is complete.', 'completed'],
-            'cancelled', 'canceled' => [0, 'Your order has been cancelled.', 'cancelled'],
-            default => [0, 'Your order status', ''],
-        };
-        return [
-            'status' => $paymentMethod === 'cash_on_delivery' && in_array($normalized, ['ready', 'ready for pickup', 'ready to pickup'], true) ? 'Delivery' : $status,
-            'progress_step' => $step,
-            'tracking_heading' => $heading,
-            'status_class' => $class,
-            'tracking_steps' => $steps,
-        ];
-    }
-
+    // Flow: Store entered values and validation errors in the session before redirecting.
     private function returnToCheckout(array $values, array $errors): void
     {
         $_SESSION['checkout_values'] = $values;

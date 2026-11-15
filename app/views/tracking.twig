@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>Cups &amp; Berries</title>
+    <title>Zen-Zen Snack Haus</title>
     <link href="{{ base_url }}public/style/style.css" rel="stylesheet" />
   </head>
   <body>
@@ -34,7 +34,7 @@
           ▣
           <div>
             <small> PICKUP LOCATION </small>
-            <b> Cups &amp; Berries Arellano Dagupan </b>
+            <b> Zen-Zen Snack Haus Arellano Dagupan </b>
           </div>
         </div>{% endif %}
         <h2>Order details</h2>
@@ -44,6 +44,9 @@
           Placed {{ order.created_at|date('M j, Y · g:i A', false) }}<br />
           Mode of payment: {{ order.payment_label }}
         </p>
+        {% if order.payment_method == 'gcash' %}
+        <button class="primary" type="button" data-gcash-pay aria-haspopup="dialog" aria-controls="gcash-payment-modal">Pay now</button>
+        {% endif %}
         {% include 'components/order-items.twig' with {items: order.items} %}
         {% include 'components/delivery-address.twig' %}
         {% if order.notes %}
@@ -61,6 +64,18 @@
         </div>
       </div>
     </section>
+    {% if order.payment_method == 'gcash' %}
+    <dialog class="gcash-payment-modal" id="gcash-payment-modal" aria-labelledby="gcash-payment-title" aria-describedby="gcash-payment-note">
+      <form method="dialog" class="gcash-payment-header">
+        <h2 id="gcash-payment-title">Pay with GCash</h2>
+        <button type="submit" aria-label="Close payment modal" autofocus>×</button>
+      </form>
+      <p>Order #{{ order.order_number }} · <b>₱{{ order.total|number_format(2) }}</b></p>
+      {# Replace this image source with the store's GCash QR code when ready. #}
+      <img class="gcash-payment-qr" src="{{ base_url }}public/images/gcash-qr-placeholder.svg" alt="GCash QR code placeholder — payment QR code coming soon" width="360" height="360" />
+      <p id="gcash-payment-note">Our GCash QR code will appear here soon.</p>
+    </dialog>
+    {% endif %}
     {% include 'components/footer.twig' %}
     <script type="module" src="{{ base_url }}public/js/main.js"></script>
   </body>

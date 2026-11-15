@@ -7,6 +7,7 @@ use Throwable;
 
 class AdminAuthController
 {
+    // Flow: Check an existing administrator session before showing the sign-in form.
     public function login(): void
     {
         try {
@@ -23,6 +24,7 @@ class AdminAuthController
         }
     }
 
+    // Flow: Create the login CSRF token and render the administrator form.
     private function renderLogin(?string $error = null, string $email = ''): void
     {
         Flight::response()->header('Cache-Control', 'no-store, private');
@@ -34,6 +36,7 @@ class AdminAuthController
         ]);
     }
 
+    // Flow: Validate the admin form, verify the password and role, then store the session.
     public function authenticate(): void
     {
         $email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
@@ -48,12 +51,15 @@ class AdminAuthController
                 $this->renderLogin('Enter a valid email address and password.', $email);
                 return;
             }
+            // Step: Check the password hash and the persisted administrator role.
             $user = (new User())->getByEmail($email);
             if ($user === null || !password_verify($password, $user['password']) || $user['role'] !== 'admin') {
                 $this->renderLogin('Invalid administrator email or password.', $email);
                 return;
             }
+            // Step: Renew the session ID before storing administrator login state.
             session_regenerate_id(true);
+            // Step: Store only the administrator ID and a fresh form token in the session.
             $_SESSION['admin_user'] = (int) $user['id'];
             $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
             unset($_SESSION['admin_login_csrf'], $_SESSION['admin_error'], $_SESSION['admin_success'], $_SESSION['admin_product_values']);
@@ -64,6 +70,7 @@ class AdminAuthController
         }
     }
 
+    // Flow: Check the logout CSRF token and remove administrator session values.
     public function logout(): void
     {
         $token = $_POST['csrf_token'] ?? null;

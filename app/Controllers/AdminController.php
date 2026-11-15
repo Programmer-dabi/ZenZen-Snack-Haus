@@ -11,6 +11,7 @@ use Throwable;
 class AdminController
 {
     // Recheck the persisted role on every management request, including POSTs.
+    // Flow: Recheck the stored account role before allowing any administrator request.
     private function signedInAdmin(): ?array
     {
         Flight::response()->header('Cache-Control', 'no-store, private');
@@ -23,6 +24,7 @@ class AdminController
         return $user;
     }
 
+    // Flow: Compare the posted admin CSRF token with the value stored in the session.
     private function csrf(): void
     {
         $token = $_POST['csrf_token'] ?? null;
@@ -31,6 +33,7 @@ class AdminController
         }
     }
 
+    // Flow: Reject missing, non-integer, or out-of-range record IDs.
     private function positiveId(mixed $value): int
     {
         $id = filter_var($value, FILTER_VALIDATE_INT);
@@ -40,6 +43,7 @@ class AdminController
         return $id;
     }
 
+    // Flow: Load the dashboard and requested management dialog for a verified administrator.
     public function index(): void
     {
         try {
@@ -89,9 +93,11 @@ class AdminController
             }
             $product = $data['selected_product'];
             $data['product_form'] = $_SESSION['admin_product_values'] ?? [
-                'name' => $product['product_name'] ?? '', 'category' => $product['category'] ?? 'Coffee',
+                'name' => $product['product_name'] ?? '', 'category' => $product['category'] ?? Product::CATEGORIES[0],
                 'description' => $product['description'] ?? '', 'price' => $product['base_price'] ?? '0.00',
                 'availability' => $product['availability'] ?? 'Available',
+                'unavailable_flavours' => json_decode($product['unavailable_flavours'] ?? '[]', true),
+                'unavailable_side_snacks' => json_decode($product['unavailable_side_snacks'] ?? '[]', true),
                 'variants' => array_map(static fn($v) => ['id' => $v['id'], 'size_oz' => $v['size_oz'], 'price' => $v['price'], 'stock' => $v['stock_quantity']], $product['variants'] ?? []),
                 'addons' => array_map(static fn($a) => ['id' => $a['id'], 'name' => $a['addon_name'], 'price' => $a['addon_price']], $product['addons'] ?? []),
             ];
@@ -102,6 +108,7 @@ class AdminController
                 'admin_error' => $_SESSION['admin_error'] ?? null,
                 'admin_success' => $_SESSION['admin_success'] ?? null,
                 'allowed_categories' => Admin::CATEGORIES,
+                'allowed_flavours' => Product::FLAVOURS,
                 'allowed_statuses' => $data['selected_order'] !== null
                     ? Admin::availableOrderStatuses($data['selected_order']['payment_method'], $data['selected_order']['status'])
                     : Admin::STATUSES,
@@ -115,6 +122,7 @@ class AdminController
         }
     }
 
+    // Flow: Open the existing add-product dialog.
     public function newProduct(): void
     {
         try {
@@ -126,20 +134,30 @@ class AdminController
         }
     }
 
+    // Flow: Send product creation through the shared administrator save flow.
     public function createProduct(): void { $this->saveProduct(null); }
+    // Flow: Send product editing through the shared administrator save flow.
     public function editProduct(string $id): void { $this->saveProduct($id); }
 
+    // Flow: Accept a string input and trim surrounding whitespace.
     private function text(mixed $value): string
     {
         return is_string($value) ? trim($value) : '';
     }
 
+    // Flow: Normalize posted product fields and verify the option arrays have matching rows.
     private function formValues(): array
     {
         $form = [];
         foreach (['name', 'category', 'description', 'price', 'availability'] as $field) {
             $form[$field] = $this->text($_POST[$field] ?? null);
         }
+        $unavailable = $_POST['unavailable_flavours'] ?? [];
+        Product::encodeUnavailableFlavours($unavailable);
+        $form['unavailable_flavours'] = array_values($unavailable);
+        $unavailableSnacks = $_POST['unavailable_side_snacks'] ?? [];
+        Product::encodeUnavailableSideSnacks($unavailableSnacks);
+        $form['unavailable_side_snacks'] = array_values($unavailableSnacks);
         $form['variants'] = [];
         $form['addons'] = [];
         foreach (['variants' => ['variant_oz', 'variant_id', 'variant_price', 'variant_stock'], 'addons' => ['addon_name', 'addon_id', 'addon_price']] as $group => $fields) {
@@ -168,6 +186,7 @@ class AdminController
         return $form;
     }
 
+    // Flow: Validate a non-negative price with at most two decimal places.
     private function price(string $value): float
     {
         if (!preg_match('/\A[0-9]{1,8}(?:\.[0-9]{1,2})?\z/', $value)) {
@@ -176,6 +195,7 @@ class AdminController
         return (float) $value;
     }
 
+    // Flow: Validate a non-negative whole stock quantity within the database range.
     private function stock(mixed $value): int
     {
         $quantity = filter_var($value, FILTER_VALIDATE_INT);
@@ -185,6 +205,7 @@ class AdminController
         return $quantity;
     }
 
+    // Flow: Validate product details, category, availability, variants, add-ons, and flavours.
     private function validateProduct(array $form): array
     {
         if ($form['name'] === '' || mb_strlen($form['name']) > 150 || strlen($form['description']) > 65535) {
@@ -194,6 +215,10 @@ class AdminController
             throw new InvalidArgumentException('Select a valid category and availability.');
         }
         $data = ['product_name' => $form['name'], 'category' => $form['category'], 'description' => $form['description'], 'base_price' => $this->price($form['price']), 'availability' => $form['availability']];
+        $data['unavailable_flavours'] = in_array($form['category'], Product::FLAVOUR_CATEGORIES, true)
+            ? Product::encodeUnavailableFlavours($form['unavailable_flavours'] ?? []) : null;
+        $data['unavailable_side_snacks'] = $form['category'] === 'Mix-n-Match'
+            ? Product::encodeUnavailableSideSnacks($form['unavailable_side_snacks'] ?? []) : null;
         if ($form['variants'] === []) {
             throw new InvalidArgumentException('Add at least one variant with its price and initial stock.');
         }
@@ -218,6 +243,7 @@ class AdminController
         return [$data, $variants, $addons];
     }
 
+    // Flow: Validate uploaded image content and size before assigning random filenames.
     private function uploads(bool $required, array &$uploaded): array
     {
         $images = [];
@@ -247,6 +273,7 @@ class AdminController
         return $images;
     }
 
+    // Flow: Check admin access and CSRF, validate input, and save the complete product.
     private function saveProduct(?string $rawId): void
     {
         $uploaded = [];
@@ -254,11 +281,14 @@ class AdminController
         $form = null;
         try {
             if ($this->signedInAdmin() === null) { return; }
+            // Step: Validate the form token after checking administrator access.
             $this->csrf();
             $id = $rawId === null ? null : $this->positiveId($rawId);
             $form = $this->formValues();
+            // Step: Validate every field and option before uploading or writing records.
             [$data, $variants, $addons] = $this->validateProduct($form);
             $images = $this->uploads($id === null, $uploaded);
+            // Step: Save the product and its related records in the model transaction.
             (new Product())->saveForAdmin($id, $data, $images, $addons, $variants);
             unset($_SESSION['admin_product_values']);
             $_SESSION['admin_success'] = $id === null ? 'Product added.' : 'Product updated. Existing variant stock was kept.';
@@ -270,11 +300,13 @@ class AdminController
         }
     }
 
+    // Flow: Validate an administrator stock request before updating a product variant.
     public function updateStock(string $id): void
     {
         $productId = null;
         try {
             if ($this->signedInAdmin() === null) { return; }
+            // Step: Validate the form token after checking administrator access.
             $this->csrf();
             $productId = $this->positiveId($id);
             $variantId = $this->positiveId($_POST['variant_id'] ?? null);
@@ -286,10 +318,12 @@ class AdminController
         }
     }
 
+    // Flow: Check administrator access, CSRF, and product ID before deletion.
     public function deleteProduct(string $id): void
     {
         try {
             if ($this->signedInAdmin() === null) { return; }
+            // Step: Validate the form token after checking administrator access.
             $this->csrf();
             (new Product())->deleteProduct($this->positiveId($id));
             $_SESSION['admin_success'] = 'Product deleted.';
@@ -297,11 +331,13 @@ class AdminController
         } catch (Throwable $error) { $this->failure($error, '/admin#admin-products'); }
     }
 
+    // Flow: Check administrator access and delegate status rules to the order workflow.
     public function updateOrderStatus(string $id): void
     {
         $orderId = null;
         try {
             if ($this->signedInAdmin() === null) { return; }
+            // Step: Validate the form token after checking administrator access.
             $this->csrf();
             $orderId = $this->positiveId($id);
             (new Admin())->updateOrderStatus($orderId, $this->text($_POST['status'] ?? null));
@@ -310,6 +346,7 @@ class AdminController
         } catch (Throwable $error) { $this->failure($error, $orderId === null ? '/admin' : '/admin?modal=order&id=' . $orderId); }
     }
 
+    // Flow: Store a safe validation message or generic failure before redirecting.
     private function failure(Throwable $error, string $url): void
     {
         if ($error instanceof InvalidArgumentException) {

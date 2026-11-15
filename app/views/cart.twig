@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>Cups &amp; Berries</title>
+    <title>Zen-Zen Snack Haus</title>
     <link href="{{ base_url }}public/style/style.css" rel="stylesheet" />
   </head>
   <body>
@@ -20,8 +20,8 @@
       </div>
       <div class="cart-layout">
         <div class="cart-list">
-          {% for key, item in items %}
-          <article class="cart-item" data-cart-item="{{ key }}">
+          {% for id, item in items %}
+          <article class="cart-item" data-cart-item="{{ id }}">
             {% if item.image_path %}
             <img
               alt="{{ item.product_name }}"
@@ -35,18 +35,21 @@
               <h3><a href="/product/{{ item.product_id }}">{{ item.product_name }}</a></h3>
               <p>
                 {{ item.variant_label ?: 'Standard' }}
+                {% if item.flavour|default(null) is not null %} · Flavour: {{ item.flavour }}{% endif %}
+                {% if item.side_snack|default(null) is not null %} · Side snack: {{ item.side_snack }}{% endif %}
+                {% if item.ice_level|default(null) is not null %} · {{ constant('App\\Models\\Product::ICE_LEVELS')[item.ice_level] }}{% endif %}
                 {% if item.milk_preference is not null %} · {{ item.milk_preference|capitalize }} milk{% endif %}
                 {% if item.sugar_level is not null %} · {{ item.sugar_level }}% sugar{% endif %}
                 {% for addon in item.addons %} · {{ addon.name }}{% endfor %}
               </p>
-              <form action="/cart/{{ key }}/remove" method="POST">
+              <form action="/cart/{{ id }}/remove" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                 <button type="submit">Remove</button>
               </form>
             </div>
             <div class="cart-item-end">
               <strong data-cart-line-total>₱{{ item.line_total|number_format(2) }}</strong>
-              <form class="quantity" action="/cart/{{ key }}/quantity" method="POST" data-cart-quantity-form>
+              <form class="quantity" action="/cart/{{ id }}/quantity" method="POST" data-cart-quantity-form>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                 <button type="submit" name="quantity" value="{{ item.quantity - 1 }}" data-quantity-step="-1" aria-label="Decrease quantity of {{ item.product_name }}" {% if item.quantity <= 1 %}disabled{% endif %}>−</button>
                 <b data-cart-quantity>{{ item.quantity }}</b>
@@ -57,7 +60,7 @@
           {% else %}
           <p>Your cart is empty.</p>
           {% endfor %}
-          <a class="back-link" href="/#menu"> ← Continue shopping </a>
+          <a class="back-link" href="/products"> ← Continue shopping </a>
         </div>
         <aside class="summary-card">
           <h2>Order summary</h2>

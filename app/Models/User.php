@@ -1,71 +1,64 @@
 <?php
 namespace App\Models;
 
-use App\Database\Database;
-use mysqli;
-class User
+use PDO;
+
+class User extends Model
 {
-    private mysqli $db;
-
-    public function __construct()
-    {
-        $database = new Database();
-
-        $this->db = $database->getConnection();
-    }
-
+    // Flow: Retrieve user records from the database.
     public function getUsers()
     {
         $sql = "SELECT * FROM users";
 
-        $result = $this->db->query($sql);
+        $result = $this->connection()->query($sql);
 
-        return $result->fetch_all(MYSQLI_ASSOC);
+        return $result->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Flow: Find the current customer profile using a parameterized user ID.
     public function getById(int $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT name, email, phone_number FROM users WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $user = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+        $stmt = $this->connection()->prepare('SELECT name, email, phone_number FROM users WHERE id = ?');
+        $stmt->execute([$id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        $stmt->closeCursor();
 
         return $user ?: null;
     }
 
+    // Flow: Look up the stored password hash and role for login verification.
     public function getByEmail(string $email): ?array
     {
-        $stmt = $this->db->prepare('SELECT id, password, role FROM users WHERE email = ?');
-        $stmt->bind_param('s', $email);
-        $stmt->execute();
-        $user = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+        $stmt = $this->connection()->prepare('SELECT id, password, role FROM users WHERE email = ?');
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        $stmt->closeCursor();
 
         return $user ?: null;
     }
 
+    // Flow: Confirm that the account still has the administrator role.
     public function getAdministrator(int $id): ?array
     {
-        $stmt = $this->db->prepare("SELECT id, name, email, phone_number FROM users WHERE id = ? AND role = 'admin'");
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $user = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+        $stmt = $this->connection()->prepare("SELECT id, name, email, phone_number FROM users WHERE id = ? AND role = 'admin'");
+        $stmt->execute([$id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        $stmt->closeCursor();
         return $user ?: null;
     }
 
+    // Flow: Change an existing account role and confirm that the account exists.
     public function makeAdministrator(int $id): void
     {
-        $stmt = $this->db->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $stmt->close();
+        $stmt = $this->connection()->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
+        $stmt->execute([$id]);
+        $stmt->closeCursor();
         if ($this->getAdministrator($id) === null) {
             throw new \InvalidArgumentException('Account not found.');
         }
     }
 
+    // Flow: Validate administrator details, create the account, and assign its role atomically.
     public function createAdministrator(string $name, string $email, string $phoneNumber, string $password): int
     {
         $name = trim($name);
@@ -80,33 +73,32 @@ class User
         if (mb_strlen($password) < 12 || strlen($password) > 72 || str_contains($password, "\0")) {
             throw new \InvalidArgumentException('A new administrator password must have at least 12 characters and at most 72 bytes, without null characters.');
         }
-        $this->db->begin_transaction();
+        $this->connection()->beginTransaction();
         try {
             $this->register($name, $email, $phoneNumber, $password);
-            $id = $this->db->insert_id;
+            $id = (int) $this->connection()->lastInsertId();
             $this->makeAdministrator($id);
-            $this->db->commit();
+            $this->connection()->commit();
             return $id;
         } catch (\Throwable $error) {
-            $this->db->rollback();
+            $this->connection()->rollBack();
             throw $error;
         }
     }
 
+     // Flow: Hash the password and store a customer account with a prepared INSERT.
      public function register( string $name, string $email, string $phoneNumber, string $password):bool {
+        // Step 1: Turn the plain-text password into a one-way hash before storage.
         $hashedPassword = password_hash( $password, PASSWORD_DEFAULT);
         $sql = " INSERT INTO users (name, email, phone_number, password, role) VALUES (?, ?, ?, ?, 'customer')";
 
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->connection()->prepare($sql);
 
-        $stmt->bind_param(
-            "ssss",
-            $name,
+        // Step 2: Send values separately from SQL; the database receives only the hash.
+        return $stmt->execute([$name,
             $email,
             $phoneNumber,
-            $hashedPassword
-        );
-        return $stmt->execute();
+            $hashedPassword]);
     }
 
 }

@@ -11,6 +11,7 @@ use Throwable;
 
 class AccountController
 {
+    // Flow: Check the customer session and load the profile and order history.
     public function index(): void
     {
         $userId = filter_var($_SESSION['user'] ?? null, FILTER_VALIDATE_INT);
@@ -53,6 +54,7 @@ class AccountController
         }
     }
 
+    // Flow: Validate the cancellation request and delegate ownership checks to Order.
     public function cancelOrder(string $id): void
     {
         if (!AuthMiddleware::requireLogin()) {

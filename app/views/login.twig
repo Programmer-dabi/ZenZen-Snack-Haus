@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>Cups &amp; Berries</title>
+    <title>Zen-Zen Snack Haus</title>
     <link href="{{base_url}}public/style/style.css" rel="stylesheet"/>
   </head>
   <body>
@@ -11,12 +11,12 @@
     
     <section class="login-page" id="login">
 
-      <div class="login-image">
-        <a class="logo logo-light" href="home.php">
-          <span class="logo-mark"> C&amp;B</span>
+      <div class="login-image login-image-photo">
+        <a class="logo logo-light" href="/">
+          <span class="logo-mark"> ZZ</span>
           <span>
-            Cups &amp; Berries
-            <small> Cups &amp; Berries </small>
+            Zen-Zen Snack Haus
+            <small> SNACKS &amp; REFRESHMENTS </small>
           </span>
         </a>
         <div>
@@ -31,18 +31,19 @@
             matter.
           </p>
         </div>
-        <small> © 2026 Cups &amp; Berries </small>
+        <small> © 2026 Zen-Zen Snack Haus </small>
       </div>
+      {# Step: Submit the customer email and password to the login controller. #}
       <form method='POST' action = '/Authenticate' class="login-card">
         {% if err|default(null) %}
         <p role="alert">{{ err }}</p>
         {% endif %}
-        <a class="back-link" href="home.php"> ← Back to shop </a>
+        <a class="back-link" href="/"> ← Back to shop </a>
         <div>
           <span class="kicker"> CUSTOMER ACCOUNT </span>
           <h1>Sign in</h1>
           <p>
-            New to Cups &amp; Berries?
+            New to Zen-Zen Snack Haus?
             <a href='/register'> Create an account </a>
           </p>
         </div>

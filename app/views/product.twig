@@ -3,15 +3,16 @@
   <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
-    <title>Cups &amp; Berries</title>
+    <title>Zen-Zen Snack Haus</title>
     <link href="{{ base_url }}public/style/style.css" rel="stylesheet"/>
   </head>
   <body data-page="product">
     {% include '/components/header.twig' %}
     {# <?php include('../components/header.php');?> #}
     {% for prod in products %}
+      {% set productUnavailable = prod.availability != 'Available' %}
       <section class="page-shell" id="product" data-id="{{prod.id}}">
-        <a class="back-link" href="/"> ← Back to menu </a>
+        <a class="back-link" href="/products"> ← Back to menu </a>
 
         <div class="detail-layout" style="margin-top: 25px">
           <div class="gallery">
@@ -56,10 +57,15 @@
             {{ prod.description }}
           </p>
           <strong class="detail-price"> ₱{{ prod.base_price }} </strong>
+          {% if productUnavailable %}
+          <span class="stock product-unavailable-note">Unavailable</span>
+          {% else %}
           <span class="stock"> ● In stock · Ready in 10~15 min </span>
+          {% endif %}
           <div class="option-block">
             
-            <form action="/addToCart/{{prod.id}}" method="POST" data-cart-form data-base-price="{{ prod.base_price }}" data-login-required="{{ is_logged_in ? 'false' : 'true' }}" {% if not is_logged_in %}novalidate{% endif %}>
+            {# Step: Collect product options; JavaScript sends JSON and the server checks them again. #}
+            <form action="/addToCart/{{prod.id}}" method="POST" data-cart-form data-base-price="{{ prod.base_price }}" data-product-unavailable="{{ productUnavailable ? 'true' : 'false' }}" data-login-required="{{ is_logged_in ? 'false' : 'true' }}" {% if not is_logged_in %}novalidate{% endif %}>
             {# Size chooser #}
             <h4>
               Choose a variants
@@ -105,27 +111,41 @@
               </div>
             </div>
             {# end size chooser #}
-          {# my overlooked fix later #}
-          {% if prod.category == 'Coffee' or prod.category == 'Iced-Coffee' %}
-            {# <h1>hi!!</h1> #}
-            <div class="option-block">            
-                  <h4>Milk preference</h4>
-
-                  <div class="option-grid" id="productRadioMilk">
-                    {% for milk in milk_options %}
-                    <label class="option">
-                      <input type="radio" name="milk_preference" value="{{ milk.value }}" data-price="{{ milk.price }}" {% if loop.first %}checked{% endif %} />
-                      <b>{{ milk.label }}</b>
-                      {% if milk.price == 0 %}
-                      <small>No additional cost</small>
-                      {% else %}
-                      <small>+ ₱{{ milk.price|number_format(2) }}</small>
-                      {% endif %}
-                    </label>
-                    {% endfor %}
-                  </div>
-                </div>
-                
+            {% if prod.flavours is not empty %}
+            <fieldset class="option-block flavour-choice">
+              <legend>Choose a flavour <small>Required</small></legend>
+              <div class="option-grid">
+                {% set flavourSelected = false %}
+                {% for flavour in prod.flavours %}
+                <label class="option{% if not flavour.available %} option-unavailable{% endif %}">
+                  <input type="radio" name="flavour" value="{{ flavour.name }}" required
+                    {% if not flavour.available %}disabled{% elseif not flavourSelected %}checked{% set flavourSelected = true %}{% endif %} />
+                  <b>{{ flavour.name }}</b>
+                  <small>{{ flavour.available ? 'Available' : 'Unavailable' }}</small>
+                </label>
+                {% endfor %}
+              </div>
+              {% if not flavourSelected %}<p role="status">All flavours are currently unavailable.</p>{% endif %}
+            </fieldset>
+            {% endif %}
+            {% if prod.category == 'Mix-n-Match' %}
+            <fieldset class="option-block">
+              <legend>Side Snacks <small>Required</small></legend>
+              <div class="option-grid">
+                {% set sideSnackSelected = false %}
+                {% for snack in prod.side_snacks %}
+                <label class="option{% if not snack.available %} option-unavailable{% endif %}">
+                  <input type="radio" name="side_snack" value="{{ snack.name }}" required
+                    {% if not snack.available %}disabled{% elseif not sideSnackSelected %}checked{% set sideSnackSelected = true %}{% endif %} />
+                  <b>{{ snack.name }}</b>
+                  <small>{{ snack.available ? 'Included' : 'Unavailable' }}</small>
+                </label>
+                {% endfor %}
+              </div>
+              {% if not sideSnackSelected %}<p role="status">All side snacks are currently unavailable.</p>{% endif %}
+            </fieldset>
+            {% endif %}
+            {% if prod.category in ['Coffee Series', 'Coffee', 'Iced-Coffee'] %}
                 <div class="custom-row">
                   <label>
                     Sugar level
@@ -136,13 +156,13 @@
                       <option value ="0">0% - No sugar</option>
                     </select>
                   </label>
-            {% if prod.category == 'Iced-Coffee' %}
+            {% if prod.category == 'Coffee Series' %}
                   <label>
                     Ice level
-                    <select>
-                      <option>Regular ice</option>
-                      <option>Less ice</option>
-                      <option>No ice</option>
+                    <select name="ice_level" required>
+                      {% for value, label in constant('App\\Models\\Product::ICE_LEVELS') %}
+                      <option value="{{ value }}">{{ label }}</option>
+                      {% endfor %}
                     </select>
                   </label>
             {% endif %}
@@ -193,8 +213,10 @@
 
               <input type="hidden" name="quantity" value="1">
               <input type="hidden" name="totalPrice" value="{{prod.base_price}}" id="inputTotalPrice">
-              {% if is_logged_in %}
-              <input type="submit" value="Add to Cart &#8369;{{prod.base_price}}" class = "primary grow" data-totalprice="{{prod.base_price}}" id="totalPriceHandler">
+              {% if productUnavailable %}
+              <input type="submit" value="this product is currently unavailable" class="primary grow" disabled />
+              {% elseif is_logged_in %}
+              <input type="submit" value="Add to Cart &#8369;{{prod.base_price}}" class = "primary grow" data-totalprice="{{prod.base_price}}" id="totalPriceHandler" {% if (prod.flavours is not empty and not flavourSelected) or (prod.category == 'Mix-n-Match' and not sideSnackSelected) %}disabled{% endif %}>
               {% else %}
               <a href="/login" class="primary grow" style="text-align: center">Sign in to add to cart</a>
               {% endif %}

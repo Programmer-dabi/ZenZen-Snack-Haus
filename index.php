@@ -12,8 +12,10 @@
             return false;
         }
     }
+    // Step 1: Start or resume the session so login state survives later requests.
     session_start();
 
+    // Step 2: Load application classes, database setup, and Twig rendering.
     require './vendor/autoload.php';
     require './app/Database/database.php';
     require './conf.php';
@@ -28,6 +30,7 @@
     use App\Controllers\AdminAuthController;
     use App\Middleware\AuthMiddleware;
 
+    // Step 3: Connect incoming URLs and HTTP methods to their controller actions.
     Flight::route('/login', [new AuthenController(),'login']);
 
 
@@ -37,6 +40,7 @@
     Flight::route('/logout', [new AuthenController(),'logout']);
     Flight::route('/testthis',[new HomeController(),'testing']);
     Flight::route('/', [new HomeController(),'index']);
+    Flight::route('GET /products', [new HomeController(), 'products']);
 
 
     Flight::route('/addproduct', [new AdminController(), 'newProduct']);
@@ -61,8 +65,8 @@
     Flight::route('POST /admin/orders/@id/status', [new AdminController(), 'updateOrderStatus']);
     Flight::route('GET /tracking/@id/status', [new OrderController(), 'trackingStatus']);
     Flight::route('GET /tracking/@id', [new OrderController(), 'tracking']);
-    Flight::route('POST /cart/@key/quantity', [new CartController(), 'updateQuantity']);
-    Flight::route('POST /cart/@key/remove', [new CartController(), 'remove']);
+    Flight::route('POST /cart/@id/quantity', [new CartController(), 'updateQuantity']);
+    Flight::route('POST /cart/@id/remove', [new CartController(), 'remove']);
 
 
 
@@ -75,6 +79,7 @@
 
 
     // }, [new AuthMiddleware(), 'before']);
+// Step 4: Start Flight and dispatch the current request.
 Flight::set('flight.debug', true);  
     Flight::start();
 ?>

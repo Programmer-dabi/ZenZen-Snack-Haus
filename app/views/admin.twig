@@ -1,21 +1,21 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cups &amp; Berries · Admin</title>
-    <link href="{{ base_url }}public/style/style.css" rel="stylesheet" />
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Zen-Zen Snack Haus · Admin</title>
+    <link href="{{ base_url }}public/style/style.css" rel="stylesheet"/>
   </head>
   <body>
     <section class="admin-app" id="admin">
       <aside class="admin-sidebar">
-        <a class="logo logo-light" href="/"><span class="logo-mark">C&amp;B</span><span>Cups &amp; Berries<small>COFFEE &amp; PASTRY</small></span></a>
+        <a class="logo logo-light" href="/"><span class="logo-mark">ZZ</span><span>Zen-Zen Snack Haus<small>SNACKS &amp; REFRESHMENTS</small></span></a>
         <nav>
           <a class="active" href="/admin">Dashboard</a>
           <a href="#admin-products">Products</a><a href="#admin-categories">Categories</a><a href="#admin-inventory">Inventory</a>
           <a href="#admin-orders">Orders <em>{{ stats.orders_today }}</em></a><a href="#admin-customers">Customers</a><a href="#admin-reports">Reports</a>
           <a href="/">View storefront</a>
-          <form action="/admin/logout" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">Sign out</button></form>
+          <form action="/admin/logout" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"/><button type="submit">Sign out</button></form>
         </nav>
         <div class="admin-profile"><span>{{ current_user.name|slice(0, 1)|upper }}</span><div><b>{{ current_user.name }}</b><small>Administrator</small></div></div>
       </aside>
@@ -23,7 +23,7 @@
         <header><div><small>ADMIN PORTAL</small><h1>Dashboard</h1></div><div class="admin-header-actions"><b>{{ today|date('l, M j', 'Asia/Manila') }}</b><a href="/">View shop →</a></div></header>
         {% if admin_error %}<p class="checkout-errors" role="alert">{{ admin_error }}</p>{% endif %}
         {% if admin_success %}<p class="admin-notice" role="status">{{ admin_success }}</p>{% endif %}
-        <div class="admin-welcome"><div><h2>Hello, {{ current_user.name }}.</h2><p>Here’s what’s happening at Cups &amp; Berries today.</p></div><a class="admin-primary" href="/admin?modal=add-product">＋ Add product</a></div>
+        <div class="admin-welcome"><div><h2>Hello, {{ current_user.name }}.</h2><p>Here’s what’s happening at Zen-Zen Snack Haus today.</p></div><a class="admin-primary" href="/admin?modal=add-product">＋ Add product</a></div>
         <div class="metric-grid">
           <article class="metric"><div class="metric-icon">▥</div><span>Completed sales today</span><b>₱{{ reports.daily|number_format(2) }}</b><p><small>Completed orders</small></p></article>
           <article class="metric"><div class="metric-icon">▤</div><span>Orders today</span><b>{{ stats.orders_today }}</b><p><small>All statuses</small></p></article>
@@ -34,16 +34,16 @@
           <section class="admin-panel">
             <div class="panel-title"><div><h3>Sales overview</h3><p>Completed order revenue for the last 7 days</p></div></div>
             <div class="chart-wrap"><div class="bars">
-              {% for bar in sales_chart %}<div class="bar-col" title="{{ bar.date }}: ₱{{ bar.sales|number_format(2) }}"><i style="height: {{ bar.height }}%"></i><span>{{ bar.label }}</span><small>₱{{ bar.sales|number_format(0) }}</small></div>{% endfor %}
-            </div></div>
+                {% for bar in sales_chart %}<div class="bar-col" title="{{ bar.date }}: ₱{{ bar.sales|number_format(2) }}"><i style="height: {{ bar.height }}%"></i><span>{{ bar.label }}</span><small>₱{{ bar.sales|number_format(0) }}</small></div>{% endfor %}
+              </div></div>
           </section>
           <section class="admin-panel">
             <div class="panel-title"><div><h3>Best sellers</h3><p>Completed orders this month</p></div></div>
             {% for product in best_sellers %}
-            <div class="best-row"><span class="rank">{{ loop.index }}</span>
-              {% if product.image_path %}<img src="{{ base_url }}{{ product.image_path }}" alt="{{ product.product_name }}" />{% else %}<span aria-hidden="true"></span>{% endif %}
-              <div><b>{{ product.product_name }}</b><small>{{ product.sold }} sold</small></div><strong>₱{{ product.sales|number_format(2) }}</strong>
-            </div>
+              <div class="best-row"><span class="rank">{{ loop.index }}</span>
+                {% if product.image_path %}<img src="{{ base_url }}{{ product.image_path }}" alt="{{ product.product_name }}"/>{% else %}<span aria-hidden="true"></span>{% endif %}
+                <div><b>{{ product.product_name }}</b><small>{{ product.sold }} sold</small></div><strong>₱{{ product.sales|number_format(2) }}</strong>
+              </div>
             {% else %}<p>No completed sales this month.</p>{% endfor %}
           </section>
         </div>
@@ -52,10 +52,10 @@
           <div class="admin-table">
             <div class="admin-tr head"><span>Order</span><span>Customer</span><span>Pickup</span><span>Items</span><span>Total</span><span>Status</span><span></span></div>
             {% for order in recent_orders %}
-            <div class="admin-tr"><span>#{{ order.order_number }}</span><span>{{ order.customer_name }}</span><span>{{ order.pickup_at ? order.pickup_at|date('M j · g:i A', false) : '—' }}</span>
-              <span>{{ order.item_count }} {{ order.item_count == 1 ? 'item' : 'items' }}</span><span>₱{{ order.total|number_format(2) }}</span>
-              <span class="status {{ order.status|lower|replace({' ': '_'}) }}">{{ order.status }}</span><a href="/admin?modal=order&amp;id={{ order.id }}">View</a>
-            </div>
+              <div class="admin-tr"><span>#{{ order.order_number }}</span><span>{{ order.customer_name }}</span><span>{{ order.pickup_at ? order.pickup_at|date('M j · g:i A', false) : '—' }}</span>
+                <span>{{ order.item_count }} {{ order.item_count == 1 ? 'item' : 'items' }}</span><span>₱{{ order.total|number_format(2) }}</span>
+                <span class="status {{ order.status|lower|replace({' ': '_'}) }}">{{ order.status }}</span><a href="/admin?modal=order&amp;id={{ order.id }}">View</a>
+              </div>
             {% else %}<p>No orders yet.</p>{% endfor %}
           </div>
         </section>
@@ -63,11 +63,11 @@
           <section class="admin-panel">
             <div class="panel-title"><div><h3>Low stock alerts</h3><p>Variants with 10 or fewer units</p></div><span>{{ low_stock|length }} variants</span></div>
             {% for variant in low_stock %}
-            <div class="stock-row">
-              {% if variant.image_path %}<img src="{{ base_url }}{{ variant.image_path }}" alt="{{ variant.product_name }}" />{% else %}<span aria-hidden="true"></span>{% endif %}
-              <div><b>{{ variant.product_name }}</b><small>{{ variant.size_oz }}</small></div><span class="status {{ variant.stock_quantity == 0 ? 'pending' : 'low' }}">{{ variant.stock_quantity }} left</span>
-              <a href="/admin?modal=stock&amp;product_id={{ variant.product_id }}&amp;variant_id={{ variant.id }}">Update</a>
-            </div>
+              <div class="stock-row">
+                {% if variant.image_path %}<img src="{{ base_url }}{{ variant.image_path }}" alt="{{ variant.product_name }}"/>{% else %}<span aria-hidden="true"></span>{% endif %}
+                <div><b>{{ variant.product_name }}</b><small>{{ variant.size_oz }}</small></div><span class="status {{ variant.stock_quantity == 0 ? 'pending' : 'low' }}">{{ variant.stock_quantity }} left</span>
+                <a href="/admin?modal=stock&amp;product_id={{ variant.product_id }}&amp;variant_id={{ variant.id }}">Update</a>
+              </div>
             {% else %}<p>No low-stock variants.</p>{% endfor %}
           </section>
           <section class="admin-panel">
@@ -80,11 +80,11 @@
           <div class="admin-table product-admin">
             <div class="admin-tr head"><span>Product</span><span>Category</span><span>Base price</span><span>Variants</span><span>Availability</span><span>Actions</span></div>
             {% for product in products %}
-            <div class="admin-tr">
-              <span class="admin-product">{% if product.images %}<img src="{{ base_url }}{{ product.images[0].image_path }}" alt="{{ product.product_name }}" />{% endif %}<b>{{ product.product_name }}</b></span>
-              <span>{{ product.category }}</span><span>₱{{ product.base_price|number_format(2) }}</span><span>{{ product.variants|length }}</span><span class="status {{ product.availability == 'Available' ? 'completed' : 'pending' }}">{{ product.availability }}</span>
-              <span class="table-actions"><a href="/admin?modal=edit-product&amp;product_id={{ product.id }}">Edit</a>{% if product.variants %}<a href="/admin?modal=stock&amp;product_id={{ product.id }}">Stock</a>{% endif %}<a class="delete-link" href="/admin?modal=delete-product&amp;product_id={{ product.id }}">Delete</a></span>
-            </div>
+              <div class="admin-tr">
+                <span class="admin-product">{% if product.images %}<img src="{{ base_url }}{{ product.images[0].image_path }}" alt="{{ product.product_name }}"/>{% endif %}<b>{{ product.product_name }}</b></span>
+                <span>{{ product.category }}</span><span>₱{{ product.base_price|number_format(2) }}</span><span>{{ product.variants|length }}</span><span class="status {{ product.availability == 'Available' ? 'completed' : 'pending' }}">{{ product.availability }}</span>
+                <span class="table-actions"><a href="/admin?modal=edit-product&amp;product_id={{ product.id }}">Edit</a>{% if product.variants %}<a href="/admin?modal=stock&amp;product_id={{ product.id }}">Stock</a>{% endif %}<a class="delete-link" href="/admin?modal=delete-product&amp;product_id={{ product.id }}">Delete</a></span>
+              </div>
             {% else %}<p>No products yet. Add your first product above.</p>{% endfor %}
           </div>
         </section>

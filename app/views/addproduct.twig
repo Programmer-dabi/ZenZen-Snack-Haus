@@ -20,11 +20,9 @@
             <label for="category">Category
             <select id="category" name="category" required>
                 <option value="">Select category</option>
-                <option value="Coffee">Coffee</option>
-                <option value="Iced-Coffee">Iced-Coffee</option>
-                <option value="Tea">Tea</option>
-                <option value="Pastries">Pastries</option>
-                <option value="Desserts">Desserts</option>
+                {% for category in allowed_categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
             </select>
             </label>
           <label class="full">
@@ -63,6 +61,8 @@
           </label>
         </div>
 
+          {% include 'components/flavour-availability.twig' with {category: '', unavailable_flavours: []} %}
+          {% include 'components/side-snack-availability.twig' with {category: '', unavailable_side_snacks: []} %}
            <div id="variantsSection" hidden>
                 <h3>Product variants</h3>
 

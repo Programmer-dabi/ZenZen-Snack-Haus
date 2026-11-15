@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Step: Open the requested admin dialog without changing its server access checks.
   const modal = document.querySelector('[data-admin-modal]');
   if (!modal) return;
 
@@ -14,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = modal.querySelector('[data-admin-stock-form]');
   if (form) {
     const variant = form.querySelector('[data-stock-variant]');
+    // Step: Refresh the displayed stock and expected value when a variant changes.
     variant.addEventListener('change', () => {
       const stock = variant.selectedOptions[0].dataset.stock;
       form.querySelector('[data-expected-stock]').value = stock;

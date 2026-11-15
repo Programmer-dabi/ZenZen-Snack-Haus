@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title>Cups &amp; Berries</title>
+    <title>Zen-Zen Snack Haus</title>
     <link href="{{ base_url }}public/style/style.css" rel="stylesheet" />
 
   </head>
@@ -18,8 +18,9 @@
         <p>Choose your mode of payment and confirm your order.</p>
       </div>
       <div class="checkout-layout">
+        {# Step: Send checkout details and the existing session CSRF token to the order controller. #}
         <form class="checkout-form" action="/checkout" method="POST" novalidate>
-          <input type="hidden" name="checkout_token" value="{{ checkout_token }}" />
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
           {% if errors %}
           <div class="checkout-errors" role="alert">
             <b>Please check the following before placing your order:</b>
@@ -63,7 +64,7 @@
                   <input type="radio" name="payment_method" value="{{ value }}" required {% if values.payment_method == value %}checked{% endif %} aria-controls="{{ value == 'store_pickup' ? 'checkout-pickup-fields' : 'checkout-delivery-fields' }}" />
                   <span>
                     <b>{{ label }}</b>
-                    {% if value == 'store_pickup' %}<small>Arellano Street, Dagupan City</small>{% endif %}
+                    {% if value == 'store_pickup' %}<small>Brgy. Ambassador Alzate Village Nampicuan Nueva Ecija</small>{% endif %}
                   </span>
                   <span class="payment-check" aria-hidden="true">✓</span>
                 </label>
@@ -128,6 +129,7 @@
               <b>{{ item.quantity }}× {{ item.product_name }}</b>
               <small>
                 {{ item.variant_label ?: 'Standard' }}
+                {% if item.flavour|default(null) is not null %} · Flavour: {{ item.flavour }}{% endif %}
                 {% if item.milk_preference is not null %} · {{ item.milk_preference|capitalize }} milk{% endif %}
                 {% if item.sugar_level is not null %} · {{ item.sugar_level }}% sugar{% endif %}
                 {% for addon in item.addons %} · {{ addon.name }}{% endfor %}
@@ -136,7 +138,7 @@
             <strong>₱{{ item.line_total|number_format(2) }}</strong>
           </div>
           {% else %}
-          <p>Your cart is empty. <a href="/#menu">Browse the menu</a> to add an item.</p>
+          <p>Your cart is empty. <a href="/products">Browse the menu</a> to add an item.</p>
           {% endfor %}
           <hr />
           <div>

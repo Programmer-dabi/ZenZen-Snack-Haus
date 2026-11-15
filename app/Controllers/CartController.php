@@ -11,6 +11,7 @@ use Throwable;
 
 class CartController
 {
+    // Flow: Require login, load cart totals, and prepare a CSRF-protected cart page.
     public function index(): void
     {
         if (!AuthMiddleware::requireLogin()) {
@@ -36,6 +37,7 @@ class CartController
         }
     }
 
+    // Flow: Require login and prepare customer details and the checkout form.
     public function checkout(): void
     {
         if (!AuthMiddleware::requireLogin()) {
@@ -49,14 +51,9 @@ class CartController
                 return;
             }
 
-            $customer = null;
-            $userId = filter_var($_SESSION['user'] ?? null, FILTER_VALIDATE_INT);
-            if ($userId !== false && $userId > 0) {
-                $customer = (new User())->getById($userId);
-            }
-
-            if (!isset($_SESSION['checkout_token']) || ($_SESSION['checkout_completed_token'] ?? null) === $_SESSION['checkout_token']) {
-                $_SESSION['checkout_token'] = bin2hex(random_bytes(32));
+            $customer = (new User())->getById((int) $_SESSION['user']);
+            if (!isset($_SESSION['cart_csrf'])) {
+                $_SESSION['cart_csrf'] = bin2hex(random_bytes(32));
             }
             $values = $_SESSION['checkout_values'] ?? [
                 'name' => $customer['name'] ?? '',
@@ -76,7 +73,7 @@ class CartController
                 'customer' => $customer,
                 'values' => $values,
                 'errors' => $errors,
-                'checkout_token' => $_SESSION['checkout_token'],
+                'csrf_token' => $_SESSION['cart_csrf'],
                 'payment_methods' => Order::PAYMENT_METHODS,
                 'address_fields' => Order::ADDRESS_FIELDS,
                 'delivery_city' => Order::DELIVERY_CITY,
@@ -88,17 +85,20 @@ class CartController
         }
     }
 
-    public function updateQuantity(string $key): void
+    // Flow: Send an item quantity request through the shared cart validation flow.
+    public function updateQuantity(string $id): void
     {
-        $this->change($key, false);
+        $this->change($id, false);
     }
 
-    public function remove(string $key): void
+    // Flow: Send an item removal request through the shared cart validation flow.
+    public function remove(string $id): void
     {
-        $this->change($key, true);
+        $this->change($id, true);
     }
 
-    private function change(string $key, bool $remove): void
+    // Flow: Check login, CSRF, item ID, and quantity before changing the cart.
+    private function change(string $id, bool $remove): void
     {
         $wantsJson = str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json');
         if (!AuthMiddleware::requireLogin($wantsJson)) {
@@ -116,18 +116,18 @@ class CartController
         }
 
         try {
-            if (!preg_match('/\A[a-f0-9]{64}\z/', $key)) {
+            if (filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
                 throw new InvalidArgumentException('Invalid cart item.');
             }
             $cart = new Cart();
             if ($remove) {
-                $cart->deleteFromCart($key);
+                $cart->deleteFromCart((int) $id);
             } else {
                 $quantity = filter_var($_POST['quantity'] ?? null, FILTER_VALIDATE_INT);
                 if ($quantity === false || $quantity < 1 || $quantity > 99) {
                     throw new InvalidArgumentException('Quantity must be between 1 and 99.');
                 }
-                $cart->updateQuantity($key, $quantity);
+                $cart->updateQuantity((int) $id, $quantity);
             }
             if ($wantsJson) {
                 Flight::json(array_merge(['success' => true], $this->cartData($cart)));
@@ -150,6 +150,7 @@ class CartController
         Flight::redirect('/cart', 303);
     }
 
+    // Flow: Calculate display totals from server-stored cart prices.
     private function cartData(Cart $cart): array
     {
         $items = $cart->getItems();

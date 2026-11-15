@@ -1,0 +1,14 @@
+{# Step: Checked flavours are unavailable; the server validates the submitted allowlist. #}
+{% set flavour_categories = constant('App\\Models\\Product::FLAVOUR_CATEGORIES') %}
+<fieldset class="flavour-availability" data-flavour-availability data-flavour-categories="{{ flavour_categories|json_encode }}" {% if category not in flavour_categories %} hidden disabled{% endif %}>
+  <legend>Flavour availability</legend>
+  <p>All flavours are available by default. Check a flavour to mark it unavailable for this product.</p>
+  <div class="flavour-availability-grid">
+    {% for flavour in allowed_flavours %}
+    <label>
+      <input type="checkbox" name="unavailable_flavours[]" value="{{ flavour }}" {% if flavour in unavailable_flavours %}checked{% endif %} />
+      {{ flavour }} — unavailable
+    </label>
+    {% endfor %}
+  </div>
+</fieldset>
