@@ -32,7 +32,9 @@ abstract class AbstractOrderWorkflow implements OrderWorkflow
     // Flow: Normalize the current status and prevent backward or terminal-state changes.
     final public function availableStatuses(string $currentStatus): array
     {
+        // Normalize historical spelling and separators before interpreting the saved status.
         $normalized = $this->normalize($currentStatus);
+        // Translate historical statuses into the payment-specific labels used by administrator transitions.
         $current = match ($normalized) {
             'pending', 'placed order' => 'Placed order',
             'paid', 'payed' => 'Payed',
@@ -42,10 +44,13 @@ abstract class AbstractOrderWorkflow implements OrderWorkflow
             'cancelled', 'canceled' => 'Cancelled',
             default => ucfirst($normalized),
         };
+        // Completed and cancelled orders are terminal: retain only their current status as an available choice.
         if (in_array($current, ['Completed', 'Cancelled'], true)) {
+            // Keep these response keys consistent because both Twig and live tracking JavaScript consume them.
             return [$current];
         }
         $statuses = $this->statuses();
+        // Find the current stage in the configured sequence so earlier stages can be excluded.
         $position = array_search($current, $statuses, true);
         // Unknown historical statuses cannot safely be ranked.
         return $position === false ? [$currentStatus] : array_slice($statuses, $position);
@@ -54,8 +59,11 @@ abstract class AbstractOrderWorkflow implements OrderWorkflow
     // Flow: Build the status, progress, and labels used by tracking HTML and JSON.
     final public function trackingState(string $status): array
     {
+        // Load the payment-specific step labels before calculating which step the customer should see.
         $steps = $this->trackingSteps();
+        // Normalize historical spelling and separators before interpreting the saved status.
         $normalized = $this->normalize($status);
+        // Map stored status aliases to the keys used by the tracking messages below.
         $key = match ($normalized) {
             'ready for pickup', 'ready to pickup' => 'ready',
             'paid' => 'payed',
@@ -64,6 +72,7 @@ abstract class AbstractOrderWorkflow implements OrderWorkflow
             'canceled' => 'cancelled',
             default => $normalized,
         };
+        // Each state stores a step number, customer message, and CSS class; zero hides normal progress.
         $states = [
             'placed order' => [1, 'Your order has been placed and is awaiting confirmation.', 'placed_order'],
             'confirmed' => [2, 'We have received your order.', 'confirmed'],
@@ -71,9 +80,12 @@ abstract class AbstractOrderWorkflow implements OrderWorkflow
             'completed' => [count($steps), 'Your order is complete.', 'completed'],
             'cancelled' => [0, 'Your order has been cancelled.', 'cancelled'],
         ];
+        // Payment-specific stages extend or override the common tracking messages.
         $states = array_merge($states, $this->progressStates());
+        // Unknown saved statuses use a neutral message instead of assuming a progress position.
         [$step, $heading, $class] = $states[$key] ?? [0, 'Your order status', ''];
 
+        // Keep these response keys consistent because both Twig and live tracking JavaScript consume them.
         return [
             'status' => $this->displayStatus($status, $normalized),
             'progress_step' => $step,
@@ -86,6 +98,7 @@ abstract class AbstractOrderWorkflow implements OrderWorkflow
     // Flow: Normalize historical capitalization, separators, and pickup spelling.
     private function normalize(string $status): string
     {
+        // Collapse spaces, underscores, and hyphens before applying historical pickup spelling rules.
         $normalized = strtolower(trim(preg_replace('/[\s_-]+/', ' ', $status)));
         return str_replace('pick up', 'pickup', $normalized);
     }

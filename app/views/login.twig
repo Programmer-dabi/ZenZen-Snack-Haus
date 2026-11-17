@@ -1,4 +1,4 @@
-<!doctype html>
+{# AuthenController supplies the remembered/submitted email, checkbox preference, and sign-in messages. #}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -7,7 +7,7 @@
     <link href="{{base_url}}public/style/style.css" rel="stylesheet"/>
   </head>
   <body>
-    {% include 'components/header.twig' %}
+    {# Reuse the shop header; the controller-provided cart count populates its badges. #}{% include 'components/header.twig' %}
 
     <section class="login-page" id="login">
 
@@ -34,8 +34,8 @@
         <small> © 2026 Zen-Zen Snack Haus </small>
       </div>
       {# Step: Submit the customer email and password to the login controller. #}
-      <form method='POST' action = '/Authenticate' class="login-card">
-        {% if err|default(null) %}
+      {# Submit the existing email/password field names to the customer authentication action. #}<form method='POST' action = '/Authenticate' class="login-card">
+        {# Display server validation feedback without treating message text as HTML. #}{% if err|default(null) %}
           <p role="alert">{{ err }}</p>
         {% endif %}
         <a class="back-link" href="/"> ← Back to shop </a>
@@ -72,7 +72,7 @@
           />
         </label>
         <label class="auth-checkbox">
-          <input type="checkbox" data-password-toggle="password" aria-controls="password" />
+          {# auth.js uses the target input ID to change password visibility without changing the submitted value. #}<input type="checkbox" data-password-toggle="password" aria-controls="password" />
           Show password
         </label>
         <div class="remember">
@@ -81,7 +81,7 @@
               type="checkbox"
               name="remember_me"
               value="1"
-              {% if remember_me|default(false) %}checked{% endif %}
+              {# Restore the email preference; this checkbox remembers an email, not an authenticated session. #}{% if remember_me|default(false) %}checked{% endif %}
               aria-describedby="remember-help"
             />
             Remember me
@@ -94,9 +94,9 @@
       </form>
     </section>
 
-    {% include 'components/footer.twig' %}
+    {# Reuse the common footer after this page's content. #}{% include 'components/footer.twig' %}
 
     <script defer src="{{base_url}}public/js/auth.js"></script>
-    <script type="module" src="{{base_url}}public/js/main.js"></script>
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{base_url}}public/js/main.js"></script>
   </body>
 </html>

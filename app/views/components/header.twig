@@ -1,4 +1,4 @@
-<header class="site-header">
+{# Reusable shop navigation; pages provide cart_count and base_url, with a zero-count fallback. #}<header class="site-header">
   <div class="nav-wrap">
     <a class="logo" href="/">
       <span class="logo-mark"> ZZ </span>
@@ -7,7 +7,7 @@
         <small> SNACKS &amp; REFRESHMENTS </small>
       </span>
     </a>
-    <nav aria-label="Main navigation">
+    {# Desktop links and mobile links target the same application routes. #}<nav aria-label="Main navigation">
       <a href="/"> Home </a>
       <a href="/products"> Menu </a>
       <a href="/#about"> Our Story </a>
@@ -22,7 +22,7 @@
         <span data-cart-count> ({{ cart_count|default(0) }}) </span>
       </a>
     </div>
-    <button
+    {# main.js controls this mobile toggle and keeps aria-expanded and the hidden navigation synchronized. #}<button
       class="Hamburger"
       type="button"
       aria-label="Open menu"
@@ -35,7 +35,7 @@
     </button>
   </div>
 
-  <nav class="navLinks" id="mobile-navigation" aria-label="Mobile navigation" hidden>
+  {# Start mobile navigation hidden; JavaScript shows it only when the menu is opened. #}<nav class="navLinks" id="mobile-navigation" aria-label="Mobile navigation" hidden>
     <a href="/"> Home </a>
     <a href="/products"> Menu </a>
     <a href="/#about"> Our Story </a>

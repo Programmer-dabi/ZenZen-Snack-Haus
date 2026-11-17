@@ -1,4 +1,4 @@
-<!doctype html>
+{# HomeController supplies completed-sales best sellers; the remaining sections are store introduction and visit details. #}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -8,7 +8,7 @@
     <link href="{{base_url}}public/style/style.css" rel="stylesheet"/>
   </head>
   <body>
-    {% include 'components/header.twig' %}
+    {# Reuse the shop header; the controller-provided cart count populates its badges. #}{% include 'components/header.twig' %}
     <section class="hero">
       <div class="hero-inner">
         <div class="hero-copy">
@@ -101,14 +101,14 @@
         <a class="outline" href="/products"> Browse all </a>
       </div>
       <div class="product-grid best-sellers-grid">
-        {% for product in products %}
-          {% include 'components/product-card.twig' %}
+        {# Render the ranked products using the same card as the full menu; the loop else handles no sales yet. #}{% for product in products %}
+          {# The include inherits the current product and common asset URL from this page. #}{% include 'components/product-card.twig' %}
         {% else %}
           <p class="catalog-empty">Our best sellers are on the way. <a class="text-link" href="/products">Explore the full menu →</a></p>
         {% endfor %}
       </div>
     </section>
-    <section class="story" id="about">
+    {# Static shop information stays separate from database-backed product cards. #}<section class="story" id="about">
       <div class="story-image">
         <img
           alt="Fresh coffee"
@@ -137,7 +137,7 @@
 
       </div>
     </section>
-    <section class="visit" id="visit">
+    {# Display the store location and contact details without querying customer data. #}<section class="visit" id="visit">
       <div>
         <span class="kicker"> Come say hello </span>
         <h2>Your corner for coffee &amp; calm.</h2>
@@ -154,7 +154,7 @@
         </div>
       </div>
     </section>
-    {% include 'components/footer.twig' %}
-    <script type="module" src="{{base_url}}public/js/main.js"></script>
+    {# Reuse the common footer after this page's content. #}{% include 'components/footer.twig' %}
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{base_url}}public/js/main.js"></script>
   </body>
 </html>

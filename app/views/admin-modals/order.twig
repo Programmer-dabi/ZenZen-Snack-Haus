@@ -1,11 +1,11 @@
-{% set order = selected_order %}
+{# AdminController supplies one selected order and its payment-aware list of allowed next statuses. #}{# Use the same order variable expected by the shared item and address components. #}{% set order = selected_order %}
 <section id="order-modal">
   <h2 id="admin-modal-title">Order #{{ order.order_number }}</h2>
   <p>{{ order.customer_name }} · {{ order.email }} · {{ order.phone_number }}</p>
   <p>
     {% if order.pickup_time %}Pickup: <b>{{ order.pickup_time|date('M j, Y · g:i A', 'Asia/Manila') }}</b> · {% endif %}Mode of payment: {{ order.payment_label }}
   </p>
-  {% include 'components/order-items.twig' with {items: order.items} %}
+  {# Display saved snapshots rather than current product prices or names. #}{% include 'components/order-items.twig' with {items: order.items} %}
   {% include 'components/delivery-address.twig' %}
   {% if order.notes %}
     <p>
@@ -15,10 +15,10 @@
   <p>
     <b>Subtotal: ₱{{ order.subtotal|number_format(2) }} · Total: ₱{{ order.total|number_format(2) }}</b>
   </p>
-  <form action="/admin/orders/{{ order.id }}/status" method="POST">
+  {# Submit status and CSRF token; the model locks and rechecks the latest state before changing it. #}<form action="/admin/orders/{{ order.id }}/status" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <label>Order status<select name="status" required>
-        {% for status in allowed_statuses %}
+        {# Limit visible choices to valid current/forward stages; terminal orders retain only their current state. #}{% for status in allowed_statuses %}
           <option value="{{ status }}" {% if status|lower == order.status|lower %}selected{% endif %}>{{ status }}</option>
         {% endfor %}
       </select></label>

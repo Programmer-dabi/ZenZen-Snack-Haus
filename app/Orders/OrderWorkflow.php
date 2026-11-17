@@ -3,6 +3,8 @@
 namespace App\Orders;
 
 /** The behavior needed by admin status controls and customer order tracking. */
+// The existing interface lists the three methods used by administrator status controls and customer tracking.
+// Payment workflows provide these methods through the shared abstract class and their own configuration.
 interface OrderWorkflow
 {
     // Flow: Define the contract for a payment method's allowed order statuses.

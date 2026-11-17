@@ -1,4 +1,4 @@
-<!doctype html>
+{# AdminController authorizes access and supplies the dashboard arrays assembled by Admin. #}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
@@ -19,7 +19,7 @@
           <a href="#admin-orders">Orders<em>{{ stats.orders_today }}</em></a>
           <a href="#admin-customers">Customers</a><a href="#admin-reports">Reports</a>
           <a href="/">View storefront</a>
-          <form action="/admin/logout" method="POST">
+          {# Administrator sign-out uses POST with a session CSRF token. #}<form action="/admin/logout" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
             <button type="submit">
               Sign out
@@ -44,10 +44,10 @@
             <b>{{ today|date('l, M j', 'Asia/Manila') }}</b><a href="/">View shop →</a>
           </div>
         </header>
-        {% if admin_error %}
+        {# Display one-time failure feedback retained by the management action. #}{% if admin_error %}
           <p class="checkout-errors" role="alert">{{ admin_error }}</p>
         {% endif %}
-        {% if admin_success %}
+        {# Display one-time success feedback after a saved management change. #}{% if admin_success %}
           <p class="admin-notice" role="status">{{ admin_success }}</p>
         {% endif %}
         <div class="admin-welcome">
@@ -99,7 +99,7 @@
             </div>
             <div class="chart-wrap">
               <div class="bars">
-                {% for bar in sales_chart %}
+                {# Use seven store-local daily sales entries; bar height percentages are calculated by the model. #}{% for bar in sales_chart %}
                   <div class="bar-col" title="{{ bar.date }}: ₱{{ bar.sales|number_format(2) }}">
                     <i style="height: {{ bar.height }}%">
                     </i>
@@ -117,7 +117,7 @@
                 <p>Completed orders this month</p>
               </div>
             </div>
-            {% for product in best_sellers %}
+            {# Render monthly completed-sales rankings from saved order item names and quantities. #}{% for product in best_sellers %}
               <div class="best-row">
                 <span class="rank">{{ loop.index }}</span>
                 {% if product.image_path %}
@@ -151,7 +151,7 @@
               <span>
               </span>
             </div>
-            {% for order in recent_orders %}
+            {# Show recent orders with saved totals and unit counts, linking each to its management dialog. #}{% for order in recent_orders %}
               <div class="admin-tr">
                 <span>#{{ order.order_number }}</span><span>{{ order.customer_name }}</span>
                 <span>
@@ -182,7 +182,7 @@
               </div>
               <span>{{ low_stock|length }} variants</span>
             </div>
-            {% for variant in low_stock %}
+            {# Highlight inventory rows with low stock; each row links to its product/variant stock dialog. #}{% for variant in low_stock %}
               <div class="stock-row">
                 {% if variant.image_path %}
                   <img src="{{ base_url }}{{ variant.image_path }}" alt="{{ variant.product_name }}"/>
@@ -207,7 +207,7 @@
                 <p>{{ stats.orders_today }} orders today</p>
               </div>
             </div>
-            {% for state in status_counts %}
+            {# Display today's order counts per status; use a nonzero progress maximum even on an empty day. #}{% for state in status_counts %}
               <div class="summary-progress">
                 <p>{{ state.status }}—{{ state.count }}</p>
                 <progress value="{{ state.count }}" max="{{ max(1, stats.orders_today) }}">{{ state.count }}</progress>
@@ -231,7 +231,7 @@
               <span>Base price</span><span>Variants</span>
               <span>Availability</span><span>Actions</span>
             </div>
-            {% for product in products %}
+            {# List current products and link to the authorized edit, stock, and deletion dialogs. #}{% for product in products %}
               <div class="admin-tr">
                 <span class="admin-product">
                   {% if product.images %}
@@ -273,7 +273,7 @@
               <span>
               </span>
             </div>
-            {% for variant in inventory %}
+            {# Show each product variant separately because inventory belongs to a variant, not just a product. #}{% for variant in inventory %}
               <div class="admin-tr">
                 <span>{{ variant.product_name }}</span><span>{{ variant.size_oz }}</span>
                 <span>₱{{ variant.price|number_format(2) }}</span><span>{{ variant.stock_quantity }}</span>
@@ -291,7 +291,7 @@
               <p>Menu groups and their current product counts</p>
             </div>
           </div>
-          {% for category in categories %}
+          {# Show configured and stored categories with the product counts calculated by the model. #}{% for category in categories %}
             <p>
               <b>{{ category.name }}</b>·{{ category.product_count }}{{ category.product_count == 1 ? 'product' : 'products' }}
             </p>
@@ -310,7 +310,7 @@
               <span>Contact</span><span>Joined</span>
               <span>Orders</span><span></span>
             </div>
-            {% for customer in customers %}
+            {# Display customer summaries and links to recent-order details without exposing stored password hashes. #}{% for customer in customers %}
               <div class="admin-tr">
                 <span>{{ customer.name }}</span><span>{{ customer.email }}</span>
                 <span>{{ customer.phone_number }}</span><span>{{ customer.created_at|date('M j, Y', false) }}</span>
@@ -346,10 +346,10 @@
         </section>
       </main>
     </section>
-    {% if modal %}
+    {# Include the management dialog only when the controller has validated and loaded the requested selection. #}{% if modal %}
       {% include 'admin-modals.twig' %}
     {% endif %}
-    <script type="module" src="{{ base_url }}public/js/main.js"></script>
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{ base_url }}public/js/main.js"></script>
     <script type="module" src="{{ base_url }}public/js/admin.js"></script>
   </body>
 </html>

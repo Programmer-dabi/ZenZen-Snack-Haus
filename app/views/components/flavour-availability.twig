@@ -1,6 +1,6 @@
-{# Step: Checked flavours are unavailable; the server validates the submitted allowlist. #}
-{% set flavour_categories = constant('App\\Models\\Product::FLAVOUR_CATEGORIES') %}
-<fieldset
+{# Checked boxes mark blocked flavours; unchecked choices remain available and the server validates the names. #}{# Step: Checked flavours are unavailable; the server validates the submitted allowlist. #}
+{# Read category rules from the shared Product constant rather than duplicating the allowlist. #}{% set flavour_categories = constant('App\\Models\\Product::FLAVOUR_CATEGORIES') %}
+{# Store the supported categories in a data attribute so main.js can update visibility after category changes. #}<fieldset
   class="flavour-availability"
   data-flavour-availability
   data-flavour-categories="{{ flavour_categories|json_encode }}"
@@ -11,7 +11,7 @@
   <legend>Flavour availability</legend>
   <p>All flavours are available by default. Check a flavour to mark it unavailable for this product.</p>
   <div class="flavour-availability-grid">
-    {% for flavour in allowed_flavours %}
+    {# Use the server allowlist for checkbox values and restore previously blocked choices. #}{% for flavour in allowed_flavours %}
       <label>
         <input
           type="checkbox"

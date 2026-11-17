@@ -1,4 +1,4 @@
-<!doctype html>
+{# AccountController supplies the customer profile, initials, owned order history, and cancellation form token. #}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -7,9 +7,9 @@
     <link href="{{ base_url }}public/style/style.css" rel="stylesheet" />
   </head>
   <body>
-    {% include 'components/header.twig' %}
+    {# Reuse the shop header; the controller-provided cart count populates its badges. #}{% include 'components/header.twig' %}
     <section class="page-shell" id="account">
-      <div class="account-head">
+      {# Display profile details and Unicode initials prepared by the controller. #}<div class="account-head">
         <div class="big-avatar">{{ initials }}</div>
         <div>
           <span class="kicker"> MY ACCOUNT </span>
@@ -26,14 +26,14 @@
           <h2>Order history</h2>
           <span>{{ orders|length }} {{ orders|length == 1 ? 'order' : 'orders' }}</span>
         </div>
-        {% if account_notice %}
+        {# Show the one-time cancellation success message from the session. #}{% if account_notice %}
           <p role="status">{{ account_notice }}</p>
         {% endif %}
-        {% if account_error %}
+        {# Show validation or save errors from a previous cancellation attempt. #}{% if account_error %}
           <p class="checkout-errors" role="alert">{{ account_error }}</p>
         {% endif %}
         <p class="safe-note">You can cancel an order until preparation begins.</p>
-        {% for order in orders %}
+        {# List only orders loaded for the current customer; the loop else handles no order history. #}{% for order in orders %}
           <div class="table-row">
             <span>#{{ order.order_number }}</span>
             <span>{{ order.created_at|date('M j, Y', false) }}</span>
@@ -42,13 +42,13 @@
             <span class="status {{ order.status|lower|replace({' ': '_'}) }}">{{ order.status }}</span>
             <div class="account-order-actions">
               <a href="/tracking/{{ order.id }}" aria-label="View details for order {{ order.order_number }}"> View details </a>
-              <form action="/account/orders/{{ order.id }}/cancel" method="POST">
+              {# POST the order ID and CSRF token; the model rechecks ownership and cancellation eligibility under a lock. #}<form action="/account/orders/{{ order.id }}/cancel" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                 <button
                   class="outline"
                   type="submit"
                   aria-label="Cancel order {{ order.order_number }}"
-                  {% if not order.can_cancel %}disabled{% endif %}
+                  {# Disable cancellation after the permitted stages, while retaining the server-side check as well. #}{% if not order.can_cancel %}disabled{% endif %}
                 >Cancel order</button>
               </form>
             </div>
@@ -58,7 +58,7 @@
         {% endfor %}
       </div>
     </section>
-    {% include 'components/footer.twig' %}
-    <script type="module" src="{{ base_url }}public/js/main.js"></script>
+    {# Reuse the common footer after this page's content. #}{% include 'components/footer.twig' %}
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{ base_url }}public/js/main.js"></script>
   </body>
 </html>

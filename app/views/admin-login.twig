@@ -1,4 +1,4 @@
-<!doctype html>
+{# AdminAuthController supplies the retained email, error, and separate administrator login CSRF token. #}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
@@ -17,18 +17,18 @@
         </div>
         <small>© 2026 Zen-Zen Snack Haus</small>
       </div>
-      <form class="login-card" action="/admin/login" method="POST" id="form">
+      {# Submit to administrator authentication, which verifies both the password and the persisted role. #}<form class="login-card" action="/admin/login" method="POST" id="form">
         <a class="back-link" href="/">← Back to shop</a>
         <div>
           <span class="kicker">ADMINISTRATOR ACCESS</span>
           <h1>Admin sign in</h1>
           <p>Use an account with administrator access.</p>
         </div>
-        {% if error %}
+        {# Display a sign-in failure message without exposing whether an administrator account exists. #}{% if error %}
           <p class="checkout-errors" role="alert">{{ error }}</p>
         {% endif %}
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
-        <label>Email address<input type="email" name="email" value="{{ email }}" autocomplete="username" maxlength="150" required/></label>
+        {# Return the session token so the controller can reject cross-site or expired sign-in submissions. #}<input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+        {# Restore only the submitted email; the password field remains empty after an error. #}<label>Email address<input type="email" name="email" value="{{ email }}" autocomplete="username" maxlength="150" required/></label>
         <label>Password<input type="password" name="password" autocomplete="current-password" required id="password"/></label>
         <label class="auth-checkbox">
           <input type="checkbox" data-password-toggle="password" aria-controls="password" />

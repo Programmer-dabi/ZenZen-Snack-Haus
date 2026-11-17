@@ -1,9 +1,9 @@
-<section id="stock-modal">
+{# This form updates one selected variant, with expected_stock guarding against stale inventory forms. #}<section id="stock-modal">
   <h2 id="admin-modal-title">Update variant stock</h2>
   <h3>{{ selected_product.product_name }}</h3>
-  <form action="/admin/products/{{ selected_product.id }}/stock" method="POST" data-admin-stock-form>
+  {# POST the product ID, variant ID, form token, requested quantity, and expected current stock. #}<form action="/admin/products/{{ selected_product.id }}/stock" method="POST" data-admin-stock-form>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <input
+    {# Keep the expected stock hidden for the model's locked comparison; admin.js updates it on variant changes. #}<input
       type="hidden"
       name="expected_stock"
       value="{{ selected_variant.stock_quantity }}"
@@ -11,7 +11,7 @@
     />
     <div class="field-grid">
       <label>Variant<select name="variant_id" data-stock-variant required>
-          {% for variant in selected_product.variants %}
+          {# Only list variants belonging to this product; data-stock supplies the matching preview and expected value. #}{% for variant in selected_product.variants %}
             <option
               value="{{ variant.id }}"
               data-stock="{{ variant.stock_quantity }}"
@@ -19,7 +19,7 @@
             >{{ variant.size_oz }} · {{ variant.stock_quantity }} in stock</option>
           {% endfor %}
         </select></label>
-      <label>New stock quantity<input
+      {# Enter an absolute stock count rather than an amount to add or subtract. #}<label>New stock quantity<input
           type="number"
           name="quantity"
           min="0"

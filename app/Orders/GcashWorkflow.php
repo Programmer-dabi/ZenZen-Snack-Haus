@@ -2,6 +2,7 @@
 
 namespace App\Orders;
 
+// GCash adds a payment-confirmed stage before preparation and delivery; Payed is the existing saved label.
 final class GcashWorkflow extends AbstractOrderWorkflow
 {
     // Flow: Return the allowed statuses for GCash.
@@ -32,6 +33,7 @@ final class GcashWorkflow extends AbstractOrderWorkflow
     }
 
     // Flow: Map statuses to tracking progress for GCash.
+    // Each tracking entry contains the progress step number, customer-facing heading, and CSS class.
     protected function progressStates(): array
     {
         return [

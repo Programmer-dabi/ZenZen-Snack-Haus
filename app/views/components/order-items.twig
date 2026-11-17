@@ -1,8 +1,8 @@
-{# Step: Display saved order snapshots; Twig escapes printed values as HTML. #}
-{% for item in items %}
+{# The caller supplies saved order item snapshots decoded by Order or Admin, not live menu prices. #}{# Step: Display saved order snapshots; Twig escapes printed values as HTML. #}
+{# Show quantity, saved choices, unit price, and line total for each item in the order. #}{% for item in items %}
   <div class="success-item">
     <span>{{ item.quantity }}×</span>
-    {% if item.image_path %}
+    {# Keep a layout placeholder when the item snapshot has no image. #}{% if item.image_path %}
       <img src="{{ base_url }}{{ item.image_path }}" alt="{{ item.product_name }}" />
     {% else %}
       <span aria-hidden="true"></span>
@@ -11,12 +11,12 @@
       <b>{{ item.product_name }}</b>
       <small>
         {{ item.variant_label ?: 'Standard' }}
-        {% if item.flavour|default(null) is not null %} · Flavour: {{ item.flavour }}{% endif %}
+        {# Only print saved optional choices that are present, retaining compatibility with older item records. #}{% if item.flavour|default(null) is not null %} · Flavour: {{ item.flavour }}{% endif %}
         {% if item.side_snack|default(null) is not null %} · Side snack: {{ item.side_snack }}{% endif %}
         {% if item.ice_level|default(null) is not null %} · {{ constant('App\\Models\\Product::ICE_LEVELS')[item.ice_level] }}{% endif %}
         {% if item.milk_preference is not null %} · {{ item.milk_preference|capitalize }} milk{% endif %}
         {% if item.sugar_level is not null %} · {{ item.sugar_level }}% sugar{% endif %}
-        {% for addon in item.addons %} · {{ addon.name }} (+₱{{ addon.price|number_format(2) }}){% endfor %}
+        {# List the names and prices from the saved add-on snapshot. #}{% for addon in item.addons %} · {{ addon.name }} (+₱{{ addon.price|number_format(2) }}){% endfor %}
       </small>
       <small>₱{{ item.unit_price|number_format(2) }} each</small>
     </div>

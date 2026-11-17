@@ -1,4 +1,4 @@
-{% if order.barangay and order.street and order.house_no %}
+{# Used by order confirmation, tracking, and administrator order details. #}{# Only display a delivery address when all three required saved address parts are present. #}{% if order.barangay and order.street and order.house_no %}
   <p>
     <b>Delivery address:</b><br />{{ order.house_no }} {{ order.street }}, {{ order.barangay }}, {{ order.city }}
   </p>

@@ -1,4 +1,4 @@
-<!doctype html>
+{# CartController restores form values and errors; OrderController validates and saves POST /checkout. #}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -8,7 +8,7 @@
 
   </head>
   <body>
-    {% include 'components/header.twig' %}
+    {# Reuse the shop header; the controller-provided cart count populates its badges. #}{% include 'components/header.twig' %}
 
     <section class="page-shell" id="checkout">
       <a class="back-link" href="/cart"> ← Back to cart </a>
@@ -21,11 +21,11 @@
         {# Step: Send checkout details and the existing session CSRF token to the order controller. #}
         <form class="checkout-form" action="/checkout" method="POST" novalidate>
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          {% if errors %}
+          {# Show a summary of server errors without discarding the submitted contact or payment values. #}{% if errors %}
             <div class="checkout-errors" role="alert">
               <b>Please check the following before placing your order:</b>
               <ul>
-                {% for field, message in errors %}
+                {# Link field errors to their inputs; form/cart errors remain plain summary text. #}{% for field, message in errors %}
                   <li>
                     {% if field in ['name', 'phone_number', 'email', 'payment_method', 'pickup_at', 'notes', 'barangay', 'street', 'house_no'] %}<a href="#checkout-{{ field }}">{{ message }}</a>{% else %}{{ message }}{% endif %}
                   </li>
@@ -37,7 +37,7 @@
             <div class="form-number">1</div>
             <div class="form-content">
               <h2>Contact information</h2>
-              <div class="field-grid">
+              {# Contact inputs use restored values and attach accessible server-error messages to invalid fields. #}<div class="field-grid">
                 <label>
                   Full name
                   <input
@@ -96,10 +96,10 @@
                 id="checkout-payment_method"
                 role="radiogroup"
                 aria-labelledby="payment-heading"
-                {% if errors.payment_method is defined %}aria-invalid="true"
+                {# Mark the payment group invalid and display its error when server validation rejected the choice. #}{% if errors.payment_method is defined %}aria-invalid="true"
                   aria-describedby="error-payment_method"{% endif %}
               >
-                {% for value, label in payment_methods %}
+                {# Submit supported payment codes while showing their readable labels and restoring the selected option. #}{% for value, label in payment_methods %}
                   <label class="payment-choice payment-option">
                     <input
                       type="radio"
@@ -118,7 +118,7 @@
                   </label>
                 {% endfor %}
               </div>
-              {% if errors.payment_method is defined %}<small id="error-payment_method" class="field-error">{{ errors.payment_method }}</small>
+              {# Mark the payment group invalid and display its error when server validation rejected the choice. #}{% if errors.payment_method is defined %}<small id="error-payment_method" class="field-error">{{ errors.payment_method }}</small>
               {% endif %}
               <div
                 class="field-grid"
@@ -142,7 +142,7 @@
                   {% endif %}
                 </label>
               </div>
-              {% set needsDelivery = values.payment_method in ['gcash', 'cash_on_delivery'] %}
+              {# Delivery methods require address fields; pickup instead requires a pickup date and time. #}{% set needsDelivery = values.payment_method in ['gcash', 'cash_on_delivery'] %}
               <div
                 class="field-grid"
                 id="checkout-delivery-fields"
@@ -150,7 +150,7 @@
                 {% if not needsDelivery %}hidden{% endif %}
               >
                 <h4 class="full">Delivery address · {{ delivery_city }}</h4>
-                {% for field, settings in address_fields %}
+                {# Generate address inputs from shared labels and length limits; dynamic attribute() reads each field value/error. #}{% for field, settings in address_fields %}
                   <label{% if field == 'street' %} class="full"{% endif %}>
                     {{ settings.label }}
                     <input
@@ -174,7 +174,7 @@
             <div class="form-number">3</div>
             <div class="form-content">
               <h2>Order notes</h2>
-              <label class="notes">
+              {# Keep optional notes after validation errors and reflect the server-supported text limit. #}<label class="notes">
                 Order notes (optional)
                 <textarea
                   name="notes"
@@ -188,7 +188,7 @@
               </label>
             </div>
           </section>
-          <button
+          {# Post the complete form once the customer confirms; displayed totals are calculated again from saved cart data. #}<button
             type="submit"
             class="primary place-order"
             style="text-align: center"
@@ -198,7 +198,7 @@
         </form>
         <aside class="summary-card checkout-summary">
           <h2>Your order</h2>
-          {% for item in items %}
+          {# Summarize saved cart selections and their controller-calculated line totals before placing the order. #}{% for item in items %}
             <div class="summary-item">
               {% if item.image_path %}
                 <img src="{{ base_url }}{{ item.image_path }}" alt="{{ item.product_name }}" />
@@ -236,8 +236,8 @@
         </aside>
       </div>
     </section>
-    {% include 'components/footer.twig' %}
-    <script type="module" src="{{ base_url }}public/js/main.js"></script>
+    {# Reuse the common footer after this page's content. #}{% include 'components/footer.twig' %}
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{ base_url }}public/js/main.js"></script>
 
   </body>
 </html>

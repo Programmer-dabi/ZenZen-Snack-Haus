@@ -1,4 +1,4 @@
-<!doctype html>
+{# AuthenController handles this registration form and asks User to hash and store the new customer password. #}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -7,7 +7,7 @@
     <link href="{{base_url}}public/style/style.css" rel="stylesheet"/>
   </head>
   <body>
-    {% include 'components/header.twig' %}
+    {# Reuse the shop header; the controller-provided cart count populates its badges. #}{% include 'components/header.twig' %}
 
     <section class="login-page" id="register">
 
@@ -34,7 +34,7 @@
         <small> © 2026 Zen-Zen Snack Haus </small>
       </div>
       {# Step: Submit customer details; the User model hashes the password before storage. #}
-      <form method='POST' action = '/addUser' class="login-card">
+      {# Keep the registration field names expected by addUser, including phonenum and confpassword. #}<form method='POST' action = '/addUser' class="login-card">
         <a class="back-link" href="/"> ← Back to shop </a>
         <div>
           <span class="kicker"> CUSTOMER REGISTRATION </span>
@@ -68,7 +68,7 @@
           />
         </label>
         <label class="auth-checkbox">
-          <input type="checkbox" data-password-toggle="password" aria-controls="password" />
+          {# Each visibility checkbox targets its own password input; it does not affect validation or hashing. #}<input type="checkbox" data-password-toggle="password" aria-controls="password" />
           Show password
         </label>
         <label>
@@ -84,16 +84,16 @@
 
         </label>
         <label class="auth-checkbox">
-          <input type="checkbox" data-password-toggle="confirm-password" aria-controls="confirm-password" />
+          {# Each visibility checkbox targets its own password input; it does not affect validation or hashing. #}<input type="checkbox" data-password-toggle="confirm-password" aria-controls="confirm-password" />
           Show confirmation password
         </label>
         <input type="submit" value="Sign up →" class="primary" style="text-align: center">
       </form>
     </section>
 
-    {% include 'components/footer.twig' %}
+    {# Reuse the common footer after this page's content. #}{% include 'components/footer.twig' %}
 
     <script defer src="{{base_url}}public/js/auth.js"></script>
-    <script type="module" src="{{base_url}}public/js/main.js"></script>
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{base_url}}public/js/main.js"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-<html lang="en">
+{# ProducController supplies product details; main.js previews option prices and sends the chosen IDs as JSON. #}<html lang="en">
   <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
@@ -7,9 +7,8 @@
   </head>
   <body data-page="product">
     {% include '/components/header.twig' %}
-    {# <?php include('../components/header.php');?> #}
-    {% for prod in products %}
-      {% set productUnavailable = prod.availability != 'Available' %}
+    {# Details stay keyed by product ID in PHP; iterate over the supplied product records for rendering. #}{% for prod in products %}
+      {# Use the stored availability to control the badge and cart submission controls. #}{% set productUnavailable = prod.availability != 'Available' %}
       <section class="page-shell" id="product" data-id="{{prod.id}}">
         <a class="back-link" href="/products"> ← Back to menu </a>
 
@@ -18,7 +17,7 @@
 
             {# Product thumbnails #}
             <div class="thumbs">
-              {% for image in prod.images %}
+              {# Show each saved image as a thumbnail; JavaScript changes the main photo on click. #}{% for image in prod.images %}
                 <button
                   class="{{ loop.first ? 'selected' : '' }}"
                   aria-pressed="{{ loop.first ? 'true' : 'false' }}"
@@ -47,16 +46,11 @@
         <div class="detail-copy">
           <span class="kicker"> {{ prod.category }} </span>
           <h1>{{ prod.product_name }}</h1>
-          <!-- <div class="detail-rating">
-            <span> ★★★★★ </span>
-            <b> 4.9 </b>
-            <u> 128 reviews </u>
-          </div> -->
           <p>
             {{ prod.description }}
           </p>
           <strong class="detail-price"> ₱{{ prod.base_price }} </strong>
-          {% if productUnavailable %}
+          {# Keep the unavailable state visible and prevent a normal add-to-cart action. #}{% if productUnavailable %}
             <span class="stock product-unavailable-note">Unavailable</span>
           {% else %}
             <span class="stock"> ● In stock · Ready in 10~15 min </span>
@@ -64,7 +58,7 @@
           <div class="option-block">
 
             {# Step: Collect product options; JavaScript sends JSON and the server checks them again. #}
-            <form
+            {# Data attributes provide preview prices and sign-in state; server validation remains authoritative. #}<form
               action="/addToCart/{{prod.id}}"
               method="POST"
               data-cart-form
@@ -83,18 +77,17 @@
                 <h4>Variants</h4>
 
                 <div class="option-grid" id="productRadioVariant">
-                  {% set variantSelected = false %}
-                  {% for variant in prod.variants %}
+                  {# Track whether an in-stock variant has been chosen so the first available one becomes the default. #}{% set variantSelected = false %}
+                  {# Use variant IDs as submitted values and disable sold-out choices; the server rechecks stock. #}{% for variant in prod.variants %}
                     <label class="option">
 
-                      {# <input type="hidden" name="" value="{{variant.price}}"> #}
                       <input
                         type="radio"
                         name="variant_id"
                         value="{{ variant.id }}"
-                        {% if not variantSelected and variant.stock_quantity > 0 %}
+                        {# Select the first in-stock option only, skipping variants with no remaining units. #}{% if not variantSelected and variant.stock_quantity > 0 %}
                           checked
-                          {% set variantSelected = true %}
+                          {# Track whether an in-stock variant has been chosen so the first available one becomes the default. #}{% set variantSelected = true %}
                         {% endif %}
                         {% if variant.stock_quantity <= 0 %}disabled{% endif %}
                         required
@@ -118,12 +111,12 @@
                 </div>
               </div>
               {# end size chooser #}
-              {% if prod.flavours is not empty %}
+              {# Only products with supported flavour options display this required chooser. #}{% if prod.flavours is not empty %}
                 <fieldset class="option-block flavour-choice">
                   <legend>Choose a flavour <small>Required</small></legend>
                   <div class="option-grid">
                     {% set flavourSelected = false %}
-                    {% for flavour in prod.flavours %}
+                    {# Show current availability, disabling blocked flavours and selecting the first available choice. #}{% for flavour in prod.flavours %}
                       <label class="option{% if not flavour.available %} option-unavailable{% endif %}">
                         <input
                           type="radio"
@@ -137,17 +130,17 @@
                       </label>
                     {% endfor %}
                   </div>
-                  {% if not flavourSelected %}
+                  {# Explain when every flavour is blocked instead of allowing an unavailable default. #}{% if not flavourSelected %}
                     <p role="status">All flavours are currently unavailable.</p>
                   {% endif %}
                 </fieldset>
               {% endif %}
-              {% if prod.category == 'Mix-n-Match' %}
+              {# Mix-n-Match also requires an available side snack. #}{% if prod.category == 'Mix-n-Match' %}
                 <fieldset class="option-block">
                   <legend>Side Snacks <small>Required</small></legend>
                   <div class="option-grid">
                     {% set sideSnackSelected = false %}
-                    {% for snack in prod.side_snacks %}
+                    {# Display the model-provided snack list and choose the first available snack. #}{% for snack in prod.side_snacks %}
                       <label class="option{% if not snack.available %} option-unavailable{% endif %}">
                         <input
                           type="radio"
@@ -161,12 +154,12 @@
                       </label>
                     {% endfor %}
                   </div>
-                  {% if not sideSnackSelected %}
+                  {# Show why the form cannot choose a snack when all options are unavailable. #}{% if not sideSnackSelected %}
                     <p role="status">All side snacks are currently unavailable.</p>
                   {% endif %}
                 </fieldset>
               {% endif %}
-              {% if prod.category in ['Coffee Series', 'Coffee', 'Iced-Coffee'] %}
+              {# Keep sugar controls for current Coffee Series and historical coffee categories. #}{% if prod.category in ['Coffee Series', 'Coffee', 'Iced-Coffee'] %}
                 <div class="custom-row">
                   <label>
                     Sugar level
@@ -177,11 +170,11 @@
                       <option value ="0">0% - No sugar</option>
                     </select>
                   </label>
-                  {% if prod.category == 'Coffee Series' %}
+                  {# Only the current Coffee Series exposes ice-level choices. #}{% if prod.category == 'Coffee Series' %}
                     <label>
                       Ice level
                       <select name="ice_level" required>
-                        {% for value, label in constant('App\\Models\\Product::ICE_LEVELS') %}
+                        {# Use the PHP option codes for submission and the corresponding readable labels for display. #}{% for value, label in constant('App\\Models\\Product::ICE_LEVELS') %}
                           <option value="{{ value }}">{{ label }}</option>
                         {% endfor %}
                       </select>
@@ -197,7 +190,7 @@
               <div class="addons">
                 <h4>Add-ons</h4>
 
-                {% for addon in prod.addons %}
+                {# Submit checked add-on IDs; their data-price values are used only for the browser preview. #}{% for addon in prod.addons %}
                   <label class="addon">
 
                     <input
@@ -221,10 +214,6 @@
                 {% endfor %}
               </div>
 
-              {# <label class="notes">
-              Order notes
-              <textarea placeholder="Any special requests?"></textarea>
-            </label> #}
               <div class="add-row">
                 <div class="quantity">
                   <button type = "button" id="minusButton">−</button>
@@ -232,11 +221,11 @@
                   <button type = "button" id="addButton">+</button>
                 </div>
 
-                <input type="hidden" name="quantity" value="1">
+                {# JavaScript updates the quantity; totalPrice is a preview field and is not trusted for cart pricing. #}<input type="hidden" name="quantity" value="1">
                 <input type="hidden" name="totalPrice" value="{{prod.base_price}}" id="inputTotalPrice">
-                {% if productUnavailable %}
+                {# Keep the unavailable state visible and prevent a normal add-to-cart action. #}{% if productUnavailable %}
                   <input type="submit" value="this product is currently unavailable" class="primary grow" disabled />
-                {% elseif is_logged_in %}
+                {# Signed-in customers can submit; guests receive the sign-in link below. #}{% elseif is_logged_in %}
                   <input
                     type="submit"
                     value="Add to Cart &#8369;{{prod.base_price}}"
@@ -250,59 +239,15 @@
                 {% else %}
                   <a href="/login" class="primary grow" style="text-align: center">Sign in to add to cart</a>
                 {% endif %}
-                {# <button class="wish">♡</button> #}
               </div>
               <p data-cart-status role="status" aria-live="polite">
               </p>
             </form>
           </div>
         </div>
-        <!-- <div class="reviews">
-        <div class="section-heading">
-          <div>
-            <span class="kicker"> WHAT PEOPLE SAY </span>
-            <h2>Customer reviews</h2>
-          </div>
-          <button class="outline">Write a review</button>
-        </div>
-        <div class="review-grid">
-          <div class="rating-summary">
-            <b> 4.9 </b>
-            <span> ★★★★★ </span>
-            <p>Based on 128 verified orders</p>
-          </div>
-          <article class="review">
-            <div>
-              <span class="avatar"> M </span>
-              <b> Mika R. </b>
-              <small> Verified purchase </small>
-            </div>
-            <span class="stars"> ★★★★★ </span>
-            <p>
-              My go-to order! Creamy without being too sweet, and the espresso
-              still comes through.
-            </p>
-            <time> 2 days ago </time>
-          </article>
-          <article class="review">
-            <div>
-              <span class="avatar"> P </span>
-              <b> Paolo D. </b>
-              <small> Verified purchase </small>
-            </div>
-            <span class="stars"> ★★★★★ </span>
-            <p>
-              Ordered it with oat milk and an extra shot. It was ready right on
-              time.
-            </p>
-            <time> 1 week ago </time>
-          </article>
-        </div>
-      </div> -->
       </section>
     {% endfor %}
     {% include '/components/footer.twig' %}
-    <script type="module" src="{{base_url}}public/js/main.js"></script>
-    {# <script type="module" src="../js/main.js"></script> #}
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{base_url}}public/js/main.js"></script>
   </body>
 </html>

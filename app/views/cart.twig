@@ -1,4 +1,4 @@
-<!doctype html>
+{# CartController supplies saved lines and totals; main.js enhances quantity forms with JSON updates. #}<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -7,7 +7,7 @@
     <link href="{{ base_url }}public/style/style.css" rel="stylesheet" />
   </head>
   <body>
-    {% include 'components/header.twig' %}
+    {# Reuse the shop header; the controller-provided cart count populates its badges. #}{% include 'components/header.twig' %}
     <section class="page-shell" id="cart">
       <div class="page-title compact">
         <span class="kicker"> YOUR ORDER </span>
@@ -15,15 +15,15 @@
         <p data-cart-summary-count>{{ cart_count }} {{ cart_count == 1 ? 'item' : 'items' }} waiting for you</p>
         <p data-cart-update-status role="status" aria-live="polite">
         </p>
-        {% if cart_error %}
+        {# Display a one-time server validation message after a normal form submission. #}{% if cart_error %}
           <p role="alert">{{ cart_error }}</p>
         {% endif %}
       </div>
       <div class="cart-layout">
         <div class="cart-list">
-          {% for id, item in items %}
+          {# Use saved line IDs for form actions and DOM hooks so returned JSON updates the correct row. #}{% for id, item in items %}
             <article class="cart-item" data-cart-item="{{ id }}">
-              {% if item.image_path %}
+              {# Show the first saved product image when present; otherwise keep the layout placeholder. #}{% if item.image_path %}
                 <img
                   alt="{{ item.product_name }}"
                   src="{{ base_url }}{{ item.image_path }}"
@@ -38,21 +38,21 @@
                 </h3>
                 <p>
                   {{ item.variant_label ?: 'Standard' }}
-                  {% if item.flavour|default(null) is not null %} · Flavour: {{ item.flavour }}{% endif %}
+                  {# Display only options present on this saved selection, including fields retained for older records. #}{% if item.flavour|default(null) is not null %} · Flavour: {{ item.flavour }}{% endif %}
                   {% if item.side_snack|default(null) is not null %} · Side snack: {{ item.side_snack }}{% endif %}
                   {% if item.ice_level|default(null) is not null %} · {{ constant('App\\Models\\Product::ICE_LEVELS')[item.ice_level] }}{% endif %}
                   {% if item.milk_preference is not null %} · {{ item.milk_preference|capitalize }} milk{% endif %}
                   {% if item.sugar_level is not null %} · {{ item.sugar_level }}% sugar{% endif %}
                   {% for addon in item.addons %} · {{ addon.name }}{% endfor %}
                 </p>
-                <form action="/cart/{{ id }}/remove" method="POST">
+                {# Send the saved line ID and session CSRF token to the owner-checked removal endpoint. #}<form action="/cart/{{ id }}/remove" method="POST">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                   <button type="submit">Remove</button>
                 </form>
               </div>
               <div class="cart-item-end">
                 <strong data-cart-line-total>₱{{ item.line_total|number_format(2) }}</strong>
-                <form class="quantity" action="/cart/{{ id }}/quantity" method="POST" data-cart-quantity-form>
+                {# Buttons submit the requested next quantity; JavaScript can use the same action for live updates. #}<form class="quantity" action="/cart/{{ id }}/quantity" method="POST" data-cart-quantity-form>
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                   <button
                     type="submit"
@@ -60,7 +60,7 @@
                     value="{{ item.quantity - 1 }}"
                     data-quantity-step="-1"
                     aria-label="Decrease quantity of {{ item.product_name }}"
-                    {% if item.quantity <= 1 %}disabled{% endif %}
+                    {# Prevent a decrease below one; removal uses its own form. #}{% if item.quantity <= 1 %}disabled{% endif %}
                   >−</button>
                   <b data-cart-quantity>{{ item.quantity }}</b>
                   <button
@@ -69,7 +69,7 @@
                     value="{{ item.quantity + 1 }}"
                     data-quantity-step="1"
                     aria-label="Increase quantity of {{ item.product_name }}"
-                    {% if item.quantity >= 99 %}disabled{% endif %}
+                    {# Disable increases at the same upper limit enforced on the server. #}{% if item.quantity >= 99 %}disabled{% endif %}
                   >+</button>
                 </form>
               </div>
@@ -79,7 +79,7 @@
           {% endfor %}
           <a class="back-link" href="/products"> ← Continue shopping </a>
         </div>
-        <aside class="summary-card">
+        {# Display totals calculated by the controller from saved unit prices, not browser-submitted amounts. #}<aside class="summary-card">
           <h2>Order summary</h2>
           <div>
             <span> Subtotal </span>
@@ -106,7 +106,7 @@
         </aside>
       </div>
     </section>
-    {% include 'components/footer.twig' %}
-    <script type="module" src="{{ base_url }}public/js/main.js"></script>
+    {# Reuse the common footer after this page's content. #}{% include 'components/footer.twig' %}
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{ base_url }}public/js/main.js"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-<fieldset
+{# Checked side-snack boxes mark blocked choices for Mix-n-Match products only. #}{# Hide and disable this group for other categories so irrelevant values are not submitted. #}<fieldset
   class="flavour-availability"
   data-side-snack-availability
   {% if category != 'Mix-n-Match' %}hidden
@@ -7,7 +7,7 @@
   <legend>Side Snacks availability</legend>
   <p>All side snacks are available by default. Check a snack to mark it unavailable for this product.</p>
   <div class="flavour-availability-grid">
-    {% for snack in constant('App\\Models\\Product::SIDE_SNACKS') %}
+    {# Generate permitted side-snack names from Product and restore their blocked checkbox state. #}{% for snack in constant('App\\Models\\Product::SIDE_SNACKS') %}
       <label>
         <input
           type="checkbox"

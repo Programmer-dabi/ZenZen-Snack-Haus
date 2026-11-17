@@ -2,6 +2,7 @@
 
 namespace App\Orders;
 
+// Cash-on-delivery tracking moves from preparation to delivery without a separate paid stage.
 final class CashOnDeliveryWorkflow extends AbstractOrderWorkflow
 {
     // Flow: Return the allowed statuses for cash on delivery.
@@ -30,6 +31,7 @@ final class CashOnDeliveryWorkflow extends AbstractOrderWorkflow
     }
 
     // Flow: Map statuses to tracking progress for cash on delivery.
+    // Each tracking entry contains the progress step number, customer-facing heading, and CSS class.
     protected function progressStates(): array
     {
         return [

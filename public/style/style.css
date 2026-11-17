@@ -1,3 +1,4 @@
+/* Shared color variables keep the storefront, forms, and administrator screens visually consistent. */
 :root {
   --ink: #1d3528;
   --muted: #5b6e60;
@@ -16,6 +17,7 @@
   --danger: #a34b43;
 }
 
+/* Include padding and borders inside declared widths so layouts are easier to size. */
 * {
   box-sizing: border-box;
 }
@@ -24,6 +26,7 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Set the shared typography, page background, and default text spacing. */
 body {
   margin: 0;
   font-family: Inter,
@@ -68,6 +71,7 @@ a {
   margin: auto;
 }
 
+/* Keep the shop header visible while scrolling; the navigation layouts change at the media queries below. */
 .site-header {
   position: sticky;
   top: 0;
@@ -171,6 +175,7 @@ a {
   display: none;
 }
 
+/* Home-page introduction: responsive text, image, and action links share this layout. */
 .hero {
   background: var(--surface-soft);
   padding: 76px 0;
@@ -283,6 +288,7 @@ a {
   border-radius: 50%;
 }
 
+/* Shared spacing and headings for home-page sections and product collections. */
 .section {
   padding: 80px 0;
 }
@@ -338,6 +344,7 @@ a {
   color: var(--brand);
 }
 
+/* Product-card grids are shared by the home best sellers and searchable menu. */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -368,6 +375,7 @@ a {
   margin-inline: 0;
 }
 
+/* Arrange the menu search and category controls while retaining clear keyboard focus styles. */
 .catalog-tools {
   align-items: end;
   flex-wrap: wrap;
@@ -410,6 +418,7 @@ a {
   color: var(--muted);
 }
 
+/* Product imagery and badges remain inside the card image area. */
 .product-photo {
   display: block;
   width: 100%;
@@ -497,6 +506,7 @@ a {
   opacity: 0.3;
 }
 
+/* Lay out the home-page shop story and its supporting image. */
 .story {
   background: var(--surface-soft);
   display: grid;
@@ -553,6 +563,7 @@ a {
   font-size: 12px;
 }
 
+/* Use the dark store-contact panel to separate visit information from the product listing. */
 .visit {
   padding: 60px max(4%, calc((100% - 1180px) / 2));
   background: var(--brand);
@@ -603,6 +614,7 @@ a {
   padding: 70px 0;
 }
 
+/* Shared page headings and filters keep customer pages aligned to the same content width. */
 .page-title {
   text-align: center;
   max-width: 680px;
@@ -708,6 +720,7 @@ a {
   color: var(--muted);
 }
 
+/* Product details combine gallery thumbnails, the main image, and option controls. */
 .detail-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -780,6 +793,7 @@ a {
   margin: 8px 0 25px;
 }
 
+/* Group product choices and distinguish selected, disabled, and unavailable controls. */
 .option-block {
   margin: 25px 0;
 }
@@ -843,6 +857,7 @@ a {
   cursor: not-allowed;
 }
 
+/* Administrator availability controls mark blocked choices; disabled fieldsets are controlled by main.js. */
 .flavour-availability {
   border: 1px solid var(--line);
   margin: 24px 0;
@@ -919,6 +934,7 @@ a {
   padding: 12px;
 }
 
+/* Keep quantity controls beside the add-to-cart action and preview total. */
 .add-row {
   display: flex;
   gap: 8px;
@@ -1007,6 +1023,7 @@ a {
 }
 
 .cart-layout,
+/* Place checkout details beside the saved-order summary on larger screens. */
 .checkout-layout {
   display: grid;
   grid-template-columns: 1.6fr 0.8fr;
@@ -1116,6 +1133,7 @@ a {
     serif;
 }
 
+/* Make validation summaries and invalid fields easy to find without relying on color alone. */
 .checkout-errors {
   padding: 16px;
   margin-bottom: 24px;
@@ -1142,6 +1160,7 @@ a {
 }
 
 .pickup-choice,
+/* Display payment radios as choice cards; the checked input determines the selected appearance. */
 .payment-choice {
   display: flex;
   gap: 15px;
@@ -1215,6 +1234,7 @@ a {
   height: 55px;
 }
 
+/* Order confirmation groups the saved reference, item snapshots, and total. */
 .success-page {
   width: min(760px, 92%);
   margin: auto;
@@ -1249,6 +1269,7 @@ a {
     serif;
 }
 
+/* Style the native payment-information dialog, including its backdrop and QR image. */
 .gcash-payment-modal {
   width: min(440px, calc(100% - 32px));
   max-height: calc(100dvh - 32px);
@@ -1307,6 +1328,7 @@ a {
   flex: 1;
 }
 
+/* Order status badges use classes supplied by saved status labels or the tracking workflow. */
 .status {
   display: inline-block;
   padding: 4px 9px;
@@ -1382,6 +1404,7 @@ a {
   margin: auto;
 }
 
+/* Tracking highlights reached steps; JavaScript updates these classes as polling receives a new state. */
 .progress-list {
   margin: 35px 0;
 }
@@ -1425,6 +1448,7 @@ a {
   font-size: 10px;
 }
 
+/* Customer profile and order-history styles are shared across the account page. */
 .account-head {
   display: flex;
   gap: 20px;
@@ -1513,6 +1537,7 @@ a {
   cursor: not-allowed;
 }
 
+/* Customer and administrator sign-in screens use a shared image-and-form layout. */
 .login-page {
   min-height: 100vh;
   display: grid;
@@ -1641,6 +1666,7 @@ a {
   font-weight: 700;
 }
 
+/* Administrator screens use a sidebar and dashboard area with metric cards, lists, and charts. */
 .admin-app {
   min-height: 100vh;
   background: var(--surface-soft);
@@ -1854,6 +1880,7 @@ a {
   font-size: 11px;
 }
 
+/* Dashboard bars use model-calculated percentage heights rather than calculating sales in CSS. */
 .chart-wrap {
   height: 250px;
   display: flex;
@@ -1940,6 +1967,7 @@ a {
   border: 1px solid var(--green);
 }
 
+/* Management dialogs share sizing and controls; admin.js opens them as native modals when supported. */
 .admin-modal {
   width: min(900px, 94vw);
   max-height: 90vh;
@@ -2027,6 +2055,7 @@ a {
   accent-color: var(--brand);
 }
 
+/* Use grid-based table rows for administrator listings and editable option rows. */
 .admin-tr {
   display: grid;
   grid-template-columns: 1.1fr 1.2fr 1fr 0.8fr 0.8fr 0.9fr auto;
@@ -2168,6 +2197,7 @@ a {
   grid-template-columns: 1.2fr 1.5fr 1.3fr 1fr 0.6fr 0.7fr auto;
 }
 
+/* Group completed-sales report figures and their supporting chart. */
 .reports {
   display: grid;
   gap: 25px;
@@ -2223,6 +2253,7 @@ a {
   color: var(--muted);
 }
 
+/* Shared storefront footer columns collapse with the responsive rules below. */
 footer {
   background: var(--forest);
   color: #fff;
@@ -2284,6 +2315,7 @@ footer {
   margin-bottom: 30px;
 }
 
+/* At intermediate desktop widths, reduce navigation spacing before switching to the mobile menu. */
 @media (min-width: 901px) and (max-width: 1100px) {
   .nav-wrap {
     gap: 16px;
@@ -2297,6 +2329,7 @@ footer {
   }
 }
 
+/* Tablet/mobile layouts reveal the hamburger menu and stack wide content grids and forms. */
 @media (max-width: 900px) {
   .admin-modal {
     padding: 18px;
@@ -2460,6 +2493,7 @@ footer {
   }
 }
 
+/* On narrow phones, further simplify grids, spacing, and form layouts to avoid horizontal overflow. */
 @media (max-width: 560px) {
   .nav-wrap {
     gap: 12px;

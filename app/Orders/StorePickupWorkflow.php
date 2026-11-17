@@ -2,8 +2,10 @@
 
 namespace App\Orders;
 
+// Pickup tracking ends with readiness for collection and completion instead of a delivery stage.
 final class StorePickupWorkflow extends AbstractOrderWorkflow
 {
+    // This ordered status list also supplies the administrator default status choices.
     public const STATUSES = [
         'Placed order',
         'Confirmed',
@@ -32,6 +34,7 @@ final class StorePickupWorkflow extends AbstractOrderWorkflow
     }
 
     // Flow: Map statuses to tracking progress for store pickup.
+    // Each tracking entry contains the progress step number, customer-facing heading, and CSS class.
     protected function progressStates(): array
     {
         return [
