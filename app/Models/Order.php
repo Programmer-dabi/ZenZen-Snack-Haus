@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use InvalidArgumentException;
@@ -65,14 +66,23 @@ class Order extends Model
         if ($changed === 0) {
             return;
         }
-        $stmt = $db->prepare('SELECT variant_id, SUM(quantity) AS quantity FROM order_items WHERE order_id = ? AND variant_id IS NOT NULL GROUP BY variant_id ORDER BY variant_id');
+        $stmt = $db->prepare('SELECT 
+        variant_id, SUM(quantity) 
+        AS quantity 
+        FROM order_items 
+        WHERE order_id = ? 
+        AND variant_id 
+        IS NOT NULL GROUP BY variant_id 
+        ORDER BY variant_id');
         $stmt->execute([$id]);
         $reservations = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         foreach ($reservations as $reservation) {
             $variantId = (int) $reservation['variant_id'];
             $quantity = (int) $reservation['quantity'];
-            $stmt = $db->prepare('UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE id = ?');
+            $stmt = $db->prepare('UPDATE product_variants 
+            SET stock_quantity = stock_quantity + ? 
+            WHERE id = ?');
             $stmt->execute([$quantity, $variantId]);
             $stmt->closeCursor();
         }
@@ -126,8 +136,10 @@ class Order extends Model
 
             $subtotalCentavos = 0;
             $variantQuantities = [];
-            foreach ($items as &$item) {
-                $stmt = $this->connection()->prepare('SELECT availability, category, unavailable_flavours, unavailable_side_snacks FROM products WHERE id = ? FOR UPDATE');
+            foreach ($items as & $item) {
+                $stmt = $this->connection()->prepare('SELECT availability, category, unavailable_flavours, unavailable_side_snacks 
+                FROM products 
+                WHERE id = ? FOR UPDATE');
                 $stmt->execute([$item['product_id']]);
                 $product = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
                 $stmt->closeCursor();
@@ -174,10 +186,23 @@ class Order extends Model
                      barangay, street, house_no, city)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
-            $stmt->execute([$orderNumber, $userId,
-                $details['name'], $details['phone_number'], $details['email'], $pickupAt,
-                $details['notes'], $paymentMethod, $initialStatus, $total, $total,
-                $address['barangay'], $address['street'], $address['house_no'], $address['city']]);
+            $stmt->execute([
+                $orderNumber,
+                $userId,
+                $details['name'],
+                $details['phone_number'],
+                $details['email'],
+                $pickupAt,
+                $details['notes'],
+                $paymentMethod,
+                $initialStatus,
+                $total,
+                $total,
+                $address['barangay'],
+                $address['street'],
+                $address['house_no'],
+                $address['city']
+            ]);
             $orderId = (int) $this->connection()->lastInsertId();
             $stmt->closeCursor();
 
@@ -191,9 +216,23 @@ class Order extends Model
                          addons, milk_preference, sugar_level, unit_price, quantity, line_total, flavour, side_snack, ice_level)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                 );
-                $stmt->execute([$orderId, $item['product_id'], $item['variant_id'],
-                    $item['product_name'], $item['variant_label'], $item['image_path'], $addons,
-                    $item['milk_preference'], $item['sugar_level'], $unitPrice, $item['quantity'], $item['line_total'], $item['flavour'], $item['side_snack'], $item['ice_level']]);
+                $stmt->execute([
+                    $orderId,
+                    $item['product_id'],
+                    $item['variant_id'],
+                    $item['product_name'],
+                    $item['variant_label'],
+                    $item['image_path'],
+                    $addons,
+                    $item['milk_preference'],
+                    $item['sugar_level'],
+                    $unitPrice,
+                    $item['quantity'],
+                    $item['line_total'],
+                    $item['flavour'],
+                    $item['side_snack'],
+                    $item['ice_level']
+                ]);
                 $stmt->closeCursor();
             }
 
@@ -215,7 +254,8 @@ class Order extends Model
         if ($userId === null) {
             return null;
         }
-        $stmt = $this->connection()->prepare('SELECT * FROM orders WHERE order_number = ? AND user_id = ?');
+        $stmt = $this->connection()->prepare('SELECT * FROM orders 
+        WHERE order_number = ? AND user_id = ?');
         $stmt->execute([$number, $userId]);
         $order = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $stmt->closeCursor();
@@ -232,7 +272,8 @@ class Order extends Model
         if ($userId === null) {
             return null;
         }
-        $stmt = $this->connection()->prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?');
+        $stmt = $this->connection()->prepare('SELECT * FROM orders 
+        WHERE id = ? AND user_id = ?');
         $stmt->execute([$id, $userId]);
         $order = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $stmt->closeCursor();
@@ -247,7 +288,8 @@ class Order extends Model
         if ($userId === null) {
             return null;
         }
-        $stmt = $this->connection()->prepare('SELECT status, payment_method FROM orders WHERE id = ? AND user_id = ?');
+        $stmt = $this->connection()->prepare('SELECT status, 
+        payment_method FROM orders WHERE id = ? AND user_id = ?');
         $stmt->execute([$id, $userId]);
         $order = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $stmt->closeCursor();
@@ -270,7 +312,7 @@ class Order extends Model
         $stmt->execute([$userId]);
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
-        foreach ($orders as &$order) {
+        foreach ($orders as & $order) {
             $order['can_cancel'] = self::canCustomerCancel($order['status']);
         }
         unset($order);
@@ -316,7 +358,7 @@ class Order extends Model
         $stmt->execute([$order['id']]);
         $order['items'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
-        foreach ($order['items'] as &$item) {
+        foreach ($order['items'] as & $item) {
             $item['addons'] = json_decode($item['addons'], true, 512, JSON_THROW_ON_ERROR);
         }
         unset($item);

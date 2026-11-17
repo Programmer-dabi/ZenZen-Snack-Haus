@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Orders;
 
 final class OrderWorkflowFactory

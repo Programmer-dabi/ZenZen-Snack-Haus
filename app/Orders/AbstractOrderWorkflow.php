@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Orders;
 
 /** Shared status normalization and progression with payment-specific hooks. */

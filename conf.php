@@ -1,5 +1,4 @@
 <?php
-
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 
@@ -18,8 +17,7 @@ $twig = new Environment($loader, [
 $twig->addGlobal('base_url', Flight::get('flight.base_url'));
 
 // Step 3: Let controllers render Twig templates through Flight::render().
-Flight::map('render', function (string $template, array $data = []) use ($twig) {
-
+Flight::map('render', function (string $template, array $data = []) use($twig) {
     if (substr($template, -5) !== '.twig') {
         $template .= '.twig';
     }

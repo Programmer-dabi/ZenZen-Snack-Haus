@@ -48,7 +48,7 @@ class Admin extends Model
     public function products(): array
     {
         $products = (new Product($this->connection()))->getProductAll();
-        foreach ($products as &$product) {
+        foreach ($products as & $product) {
             $product['variants'] = [];
             $product['addons'] = [];
         }
@@ -79,28 +79,55 @@ class Admin extends Model
                 ]);
             }
         }
-        $lowStock = array_values(array_filter($inventory, static fn($variant) => (int) $variant['stock_quantity'] <= 10));
-        usort($lowStock, static fn($a, $b) => (int) $a['stock_quantity'] <=> (int) $b['stock_quantity']);
+        $lowStock = array_values(array_filter($inventory, static fn ($variant) => (int) $variant['stock_quantity'] <= 10));
+        usort($lowStock, static fn ($a, $b) => (int) $a['stock_quantity'] <=> (int) $b['stock_quantity']);
         $reports = [];
-        foreach (['daily' => $today->format('Y-m-d H:i:s'), 'weekly' => $today->modify('-6 days')->format('Y-m-d H:i:s'), 'monthly' => $month] as $period => $start) {
-            $reports[$period] = $this->rows("SELECT COALESCE(SUM(total), 0) AS sales FROM orders WHERE status = 'Completed' AND created_at >= ? AND created_at < ?", [$start, $tomorrow])[0]['sales'];
+        foreach ([
+            'daily' => $today->format('Y-m-d H:i:s'),
+            'weekly' => $today->modify('-6 days')->format('Y-m-d H:i:s'),
+            'monthly' => $month
+        ] as $period => $start) {
+            $reports[$period] = $this->rows("SELECT COALESCE(SUM(total), 0) 
+            AS sales FROM orders WHERE status = 'Completed' 
+            AND created_at >= ? AND created_at < ?", [$start, $tomorrow])[0]['sales'];
         }
-        $sales = $this->rows("SELECT DATE(created_at) AS day, SUM(total) AS sales FROM orders WHERE status = 'Completed' AND created_at >= ? AND created_at < ? GROUP BY DATE(created_at)", [$today->modify('-6 days')->format('Y-m-d H:i:s'), $tomorrow]);
+        
+        //sales
+        $sales = $this->rows("SELECT DATE(created_at) 
+        AS day, SUM(total) 
+        AS sales 
+        FROM orders 
+        WHERE status = 'Completed' 
+        AND created_at >= ? 
+        AND created_at < ? 
+        GROUP BY DATE(created_at)", [$today->modify('-6 days')->format('Y-m-d H:i:s'), $tomorrow]);
         $byDay = array_column($sales, 'sales', 'day');
         $chart = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = $today->modify("-$i days");
-            $chart[] = ['label' => $date->format('D'), 'date' => $date->format('M j'), 'sales' => (float) ($byDay[$date->format('Y-m-d')] ?? 0)];
+            $chart[] = [
+                'label' => $date->format('D'),
+                'date' => $date->format('M j'),
+                'sales' => (float)($byDay[$date->format('Y-m-d')] ?? 0)
+            ];
         }
-        $maximum = max(1, ...array_column($chart, 'sales'));
-        foreach ($chart as &$bar) {
+        $maximum = max(1, ... array_column($chart, 'sales'));
+        foreach ($chart as & $bar) {
             $bar['height'] = round($bar['sales'] / $maximum * 100);
         }
         unset($bar);
-        $categoryCounts = array_column($this->rows('SELECT category, COUNT(*) AS product_count FROM products GROUP BY category'), 'product_count', 'category');
+        //sales end
+
+        $categoryCounts = array_column($this->rows('SELECT category, COUNT(*) 
+        AS product_count 
+        FROM products 
+        GROUP BY category'), 'product_count', 'category');
         $categories = [];
         foreach (array_unique(array_merge(self::CATEGORIES, array_keys($categoryCounts))) as $category) {
-            $categories[] = ['name' => $category, 'product_count' => (int) ($categoryCounts[$category] ?? 0)];
+            $categories[] = [
+                'name' => $category,
+                'product_count' => (int)($categoryCounts[$category] ?? 0)
+            ];
         }
         return [
             'products' => $products,
@@ -110,15 +137,67 @@ class Admin extends Model
             'sales_chart' => $chart,
             'categories' => $categories,
             'stats' => [
-                'orders_today' => $this->rows('SELECT COUNT(*) AS count FROM orders WHERE created_at >= ? AND created_at < ?', [$today->format('Y-m-d H:i:s'), $tomorrow])[0]['count'],
-                'orders_month' => $this->rows('SELECT COUNT(*) AS count FROM orders WHERE created_at >= ? AND created_at < ?', [$month, $tomorrow])[0]['count'],
-                'customers' => $this->rows('SELECT COUNT(*) AS count FROM users')[0]['count'],
+                'orders_today' => $this->rows('SELECT COUNT(*) 
+                AS count 
+                FROM orders 
+                WHERE created_at >= ? 
+                AND created_at < ?', [$today->format('Y-m-d H:i:s'), $tomorrow])[0]['count'],
+                'orders_month' => $this->rows('SELECT COUNT(*) 
+
+                AS count 
+                FROM orders 
+                WHERE created_at >= ? 
+                AND created_at < ?', [$month, $tomorrow])[0]['count'],
+                'customers' => $this->rows('SELECT COUNT(*) 
+
+                AS count 
+                FROM users')[0]['count'],
                 'products' => count($products),
             ],
-            'recent_orders' => $this->rows('SELECT o.*, (SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE order_id = o.id) AS item_count FROM orders o ORDER BY o.created_at DESC, o.id DESC LIMIT 20'),
-            'status_counts' => $this->rows('SELECT status, COUNT(*) AS count FROM orders WHERE created_at >= ? AND created_at < ? GROUP BY status ORDER BY status', [$today->format('Y-m-d H:i:s'), $tomorrow]),
-            'best_sellers' => $this->rows("SELECT i.product_name, MAX(i.image_path) AS image_path, SUM(i.quantity) AS sold, SUM(i.line_total) AS sales FROM order_items i JOIN orders o ON o.id = i.order_id WHERE o.status = 'Completed' AND o.created_at >= ? AND o.created_at < ? GROUP BY i.product_id, i.product_name ORDER BY sold DESC, sales DESC LIMIT 5", [$month, $tomorrow]),
-            'customers' => $this->rows('SELECT u.id, u.name, u.email, u.phone_number, u.created_at, (SELECT COUNT(*) FROM orders WHERE user_id = u.id) AS order_count FROM users u ORDER BY u.created_at DESC, u.id DESC LIMIT 50'),
+            'recent_orders' => $this->rows(' SELECT o.*,
+                    COALESCE(
+                        SUM(i.quantity), 0)
+                    AS item_count
+                FROM orders o
+                LEFT JOIN order_items i
+                    ON o.id = i.order_id
+                GROUP BY o.id
+                ORDER BY
+                    o.created_at DESC,
+                    o.id DESC
+                LIMIT 20'),
+
+            'status_counts' => $this->rows('SELECT status, 
+            COUNT(*) 
+            AS count 
+            FROM orders 
+            WHERE created_at >= ? 
+            AND created_at < ? 
+            GROUP BY status 
+            ORDER BY status', [$today->format('Y-m-d H:i:s'), $tomorrow]),
+
+            'best_sellers' => $this->rows("SELECT i.product_name, 
+            MAX(i.image_path) 
+            AS image_path, SUM(i.quantity) 
+            AS sold, SUM(i.line_total) 
+            AS sales 
+            FROM order_items i 
+            JOIN orders o 
+            ON o.id = i.order_id 
+            WHERE o.status = 'Completed' 
+            AND o.created_at >= ? 
+            AND o.created_at < ? 
+            GROUP BY i.product_id, i.product_name 
+            ORDER BY sold DESC, sales DESC LIMIT 5", [$month, $tomorrow]),
+
+            'customers' => $this->rows('SELECT u.id, u.name, u.email, u.phone_number, u.created_at, 
+            (SELECT COUNT(*) 
+            FROM orders 
+            WHERE user_id = u.id) 
+            AS order_count 
+            FROM users u 
+            ORDER BY u.created_at DESC, 
+            u.id DESC LIMIT 50'),
             'today' => $now,
         ];
     }
@@ -126,16 +205,23 @@ class Admin extends Model
     // Flow: Load the selected order and its saved item details for admin review.
     public function order(int $id): ?array
     {
-        $order = $this->rows('SELECT * FROM orders WHERE id = ?', [$id])[0] ?? null;
+        $order = $this->rows('SELECT * 
+        FROM orders 
+        WHERE id = ?', [$id])[0] ?? null;
         if ($order === null) {
             return null;
         }
         $order['pickup_time'] = $order['pickup_at'] !== null ? new DateTimeImmutable($order['pickup_at'], new DateTimeZone('Asia/Manila')) : null;
         $order['payment_label'] = Order::paymentLabel($order['payment_method']);
-        $order['items'] = $this->rows('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [$id]);
-        foreach ($order['items'] as &$item) {
+
+        $order['items'] = $this->rows('SELECT * 
+        FROM order_items 
+        WHERE order_id = ? 
+        ORDER BY id', [$id]);
+        foreach ($order['items'] as & $item) {
             $item['addons'] = json_decode($item['addons'], true, 512, JSON_THROW_ON_ERROR);
         }
+
         unset($item);
         return $order;
     }
@@ -143,11 +229,26 @@ class Admin extends Model
     // Flow: Load a customer summary and recent orders for admin review.
     public function customer(int $id): ?array
     {
-        $customer = $this->rows("SELECT u.id, u.name, u.email, u.phone_number, u.created_at, (SELECT COUNT(*) FROM orders WHERE user_id = u.id) AS order_count, (SELECT COALESCE(SUM(total), 0) FROM orders WHERE user_id = u.id AND status = 'Completed') AS amount_spent FROM users u WHERE u.id = ?", [$id])[0] ?? null;
+        $customer = $this->rows("SELECT u.id, u.name, u.email, u.phone_number, u.created_at, 
+        (SELECT COUNT(*) 
+        FROM orders 
+        WHERE user_id = u.id) 
+        AS order_count, (SELECT COALESCE(SUM(total), 0) 
+        FROM orders 
+        WHERE user_id = u.id 
+        AND status = 'Completed') 
+        AS amount_spent FROM users u 
+        WHERE u.id = ?", [$id])[0] ?? null;
         if ($customer === null) {
             return null;
         }
-        $customer['orders'] = $this->rows('SELECT id, order_number, total, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 10', [$id]);
+        
+        $customer['orders'] = $this->rows('SELECT id, order_number, total, status, created_at 
+        FROM orders 
+        WHERE user_id = ? 
+        ORDER BY created_at 
+        DESC, id 
+        DESC LIMIT 10', [$id]);
         return $customer;
     }
 
@@ -157,7 +258,10 @@ class Admin extends Model
         $this->connection()->beginTransaction();
         try {
             // Lock the latest status so simultaneous or stale forms cannot move it backward.
-            $order = $this->rows('SELECT status, payment_method FROM orders WHERE id = ? FOR UPDATE', [$id])[0] ?? null;
+            $order = $this->rows('SELECT status, payment_method 
+            FROM orders 
+            WHERE id = ? 
+            FOR UPDATE', [$id])[0] ?? null;
             if ($order === null) {
                 throw new InvalidArgumentException('Order not found.');
             }
@@ -170,10 +274,12 @@ class Admin extends Model
             if ($status === 'Cancelled') {
                 Order::cancelLockedOrder($this->connection(), $id);
             } else {
-                $stmt = $this->connection()->prepare('UPDATE orders SET status = ? WHERE id = ?');
+                $stmt = $this->connection()->prepare('UPDATE orders 
+                SET status = ? 
+                WHERE id = ?');
                 $stmt->execute([$status, $id]);
                 $stmt->closeCursor();
-            }
+            }    
             $this->connection()->commit();
         } catch (Throwable $error) {
             $this->connection()->rollBack();

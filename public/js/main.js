@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-
   // Keep the current search when switching the menu category.
   const catalogCategory = document.querySelector('[data-catalog-category]');
   if (catalogCategory) {
@@ -180,7 +179,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateFlavourAvailability();
   }
 
-
   const sideSnackAvailability = document.querySelector('[data-side-snack-availability]');
   if (productCategory && sideSnackAvailability) {
     function updateSideSnackAvailability() {
@@ -280,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
       refreshing = true;
       try {
         const response = await fetch(trackingPage.dataset.trackingStatusUrl, {
-          headers: {'Accept': 'application/json'},
+          headers: { 'Accept': 'application/json' },
           cache: 'no-store',
           signal: AbortSignal.timeout(10000),
         });
@@ -377,11 +375,11 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           const response = await fetch(form.action, {
             method: 'POST',
-            headers: {'Accept': 'application/json'},
+            headers: { 'Accept': 'application/json' },
             body: data,
           });
           // Step: Read the server response and place messages with textContent, not HTML.
-        const result = await response.json();
+          const result = await response.json();
           if (response.status === 401) {
             window.location.assign(result.redirect_url || '/login');
             return;
@@ -560,4 +558,5 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+
 });

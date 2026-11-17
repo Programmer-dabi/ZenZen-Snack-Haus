@@ -21,10 +21,12 @@
       </div>
       <div class="success-card">
         <div class="success-meta">
-          {% if order.pickup_time %}<div>
-            <small> PICKUP TIME </small>
-            <b>{{ order.pickup_time|date('M j, Y · g:i A', 'Asia/Manila') }}</b>
-          </div>{% endif %}
+          {% if order.pickup_time %}
+            <div>
+              <small> PICKUP TIME </small>
+              <b>{{ order.pickup_time|date('M j, Y · g:i A', 'Asia/Manila') }}</b>
+            </div>
+          {% endif %}
           <div>
             <small> PAYMENT </small>
             <b>{{ order.payment_label }}</b>
@@ -38,7 +40,9 @@
         {% include 'components/order-items.twig' with {items: order.items} %}
         {% include 'components/delivery-address.twig' %}
         {% if order.notes %}
-        <p><b>Order notes:</b> {{ order.notes }}</p>
+          <p>
+            <b>Order notes:</b> {{ order.notes }}
+          </p>
         {% endif %}
         <hr />
         <div class="success-total">

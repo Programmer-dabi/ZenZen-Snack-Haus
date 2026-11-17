@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Models\Admin;
@@ -48,11 +49,21 @@ class AdminController
     {
         try {
             $user = $this->signedInAdmin();
-            if ($user === null) { return; }
+            if ($user === null) {
+                return;
+            }
             $admin = new Admin();
             $data = $admin->dashboard();
             $modal = $_GET['modal'] ?? '';
-            if (!is_string($modal) || !in_array($modal, ['', 'add-product', 'edit-product', 'stock', 'order', 'customer', 'delete-product'], true)) {
+            if (!is_string($modal) || !in_array($modal, [
+                '',
+                'add-product',
+                'edit-product',
+                'stock',
+                'order',
+                'customer',
+                'delete-product'
+            ], true)) {
                 Flight::halt(404, 'Admin form not found.');
                 return;
             }
@@ -93,13 +104,20 @@ class AdminController
             }
             $product = $data['selected_product'];
             $data['product_form'] = $_SESSION['admin_product_values'] ?? [
-                'name' => $product['product_name'] ?? '', 'category' => $product['category'] ?? Product::CATEGORIES[0],
-                'description' => $product['description'] ?? '', 'price' => $product['base_price'] ?? '0.00',
+                'name' => $product['product_name'] ?? '',
+                'category' => $product['category'] ?? Product::CATEGORIES[0],
+                'description' => $product['description'] ?? '',
+                'price' => $product['base_price'] ?? '0.00',
                 'availability' => $product['availability'] ?? 'Available',
                 'unavailable_flavours' => json_decode($product['unavailable_flavours'] ?? '[]', true),
                 'unavailable_side_snacks' => json_decode($product['unavailable_side_snacks'] ?? '[]', true),
-                'variants' => array_map(static fn($v) => ['id' => $v['id'], 'size_oz' => $v['size_oz'], 'price' => $v['price'], 'stock' => $v['stock_quantity']], $product['variants'] ?? []),
-                'addons' => array_map(static fn($a) => ['id' => $a['id'], 'name' => $a['addon_name'], 'price' => $a['addon_price']], $product['addons'] ?? []),
+                'variants' => array_map(static fn ($v) => [
+                    'id' => $v['id'],
+                    'size_oz' => $v['size_oz'],
+                    'price' => $v['price'],
+                    'stock' => $v['stock_quantity']
+                ], $product['variants'] ?? []),
+                'addons' => array_map(static fn ($a) => ['id' => $a['id'], 'name' => $a['addon_name'], 'price' => $a['addon_price']], $product['addons'] ?? []),
             ];
             $_SESSION['admin_csrf'] ??= bin2hex(random_bytes(32));
             Flight::render('admin.twig', array_merge($data, [
@@ -126,7 +144,9 @@ class AdminController
     public function newProduct(): void
     {
         try {
-            if ($this->signedInAdmin() === null) { return; }
+            if ($this->signedInAdmin() === null) {
+                return;
+            }
             Flight::redirect('/admin?modal=add-product', 303);
         } catch (Throwable $error) {
             error_log('Admin product form failed (' . get_class($error) . ', code ' . $error->getCode() . ').');
@@ -135,9 +155,15 @@ class AdminController
     }
 
     // Flow: Send product creation through the shared administrator save flow.
-    public function createProduct(): void { $this->saveProduct(null); }
+    public function createProduct(): void
+    {
+        $this->saveProduct(null);
+    }
     // Flow: Send product editing through the shared administrator save flow.
-    public function editProduct(string $id): void { $this->saveProduct($id); }
+    public function editProduct(string $id): void
+    {
+        $this->saveProduct($id);
+    }
 
     // Flow: Accept a string input and trim surrounding whitespace.
     private function text(mixed $value): string
@@ -160,7 +186,10 @@ class AdminController
         $form['unavailable_side_snacks'] = array_values($unavailableSnacks);
         $form['variants'] = [];
         $form['addons'] = [];
-        foreach (['variants' => ['variant_oz', 'variant_id', 'variant_price', 'variant_stock'], 'addons' => ['addon_name', 'addon_id', 'addon_price']] as $group => $fields) {
+        foreach ([
+            'variants' => ['variant_oz', 'variant_id', 'variant_price', 'variant_stock'],
+            'addons' => ['addon_name', 'addon_id', 'addon_price']
+        ] as $group => $fields) {
             $columns = [];
             foreach ($fields as $field) {
                 $values = $_POST[$field] ?? [];
@@ -173,7 +202,10 @@ class AdminController
                 throw new InvalidArgumentException('Complete every product option row.');
             }
             foreach ($columns[0] as $i => $name) {
-                $row = ['id' => $this->text($columns[1][$i] ?? '0'), 'price' => $this->text($columns[2][$i] ?? null)];
+                $row = [
+                    'id' => $this->text($columns[1][$i] ?? '0'),
+                    'price' => $this->text($columns[2][$i] ?? null)
+                ];
                 if ($group === 'variants') {
                     $row['size_oz'] = $this->text($name);
                     $row['stock'] = $this->text($columns[3][$i] ?? null);
@@ -214,7 +246,13 @@ class AdminController
         if (!in_array($form['category'], Admin::CATEGORIES, true) || !in_array($form['availability'], ['Available', 'Unavailable'], true)) {
             throw new InvalidArgumentException('Select a valid category and availability.');
         }
-        $data = ['product_name' => $form['name'], 'category' => $form['category'], 'description' => $form['description'], 'base_price' => $this->price($form['price']), 'availability' => $form['availability']];
+        $data = [
+            'product_name' => $form['name'],
+            'category' => $form['category'],
+            'description' => $form['description'],
+            'base_price' => $this->price($form['price']),
+            'availability' => $form['availability']
+        ];
         $data['unavailable_flavours'] = in_array($form['category'], Product::FLAVOUR_CATEGORIES, true)
             ? Product::encodeUnavailableFlavours($form['unavailable_flavours'] ?? []) : null;
         $data['unavailable_side_snacks'] = $form['category'] === 'Mix-n-Match'
@@ -230,33 +268,46 @@ class AdminController
                 throw new InvalidArgumentException('Each variant needs a different label of up to 50 characters.');
             }
             $names[mb_strtolower($name)] = true;
-            $variants[] = ['id' => $row['id'] === '0' ? 0 : $this->positiveId($row['id']), 'size_oz' => $name, 'price' => $this->price($row['price']), 'stock' => $this->stock($row['stock'])];
+            $variants[] = [
+                'id' => $row['id'] === '0' ? 0 : $this->positiveId($row['id']),
+                'size_oz' => $name,
+                'price' => $this->price($row['price']),
+                'stock' => $this->stock($row['stock'])
+            ];
         }
         $addons = [];
         foreach ($form['addons'] as $row) {
-            if ($row['name'] === '' && $row['price'] === '' && $row['id'] === '0') { continue; }
+            if ($row['name'] === '' && $row['price'] === '' && $row['id'] === '0') {
+                continue;
+            }
             if ($row['name'] === '' || mb_strlen($row['name']) > 100) {
                 throw new InvalidArgumentException('Each add-on needs a name of up to 100 characters.');
             }
-            $addons[] = ['id' => $row['id'] === '0' ? 0 : $this->positiveId($row['id']), 'name' => $row['name'], 'price' => $this->price($row['price'])];
+            $addons[] = [
+                'id' => $row['id'] === '0' ? 0 : $this->positiveId($row['id']),
+                'name' => $row['name'],
+                'price' => $this->price($row['price'])
+            ];
         }
         return [$data, $variants, $addons];
     }
 
     // Flow: Validate uploaded image content and size before assigning random filenames.
-    private function uploads(bool $required, array &$uploaded): array
+    private function uploads(bool $required, array & $uploaded): array
     {
         $images = [];
         $directory = dirname(__DIR__, 2) . '/public/images/products';
         foreach ([1, 2, 3] as $order) {
             $file = $_FILES['image' . $order] ?? null;
-            if (!$required && ($file === null || ($file['error'] ?? null) === UPLOAD_ERR_NO_FILE)) { continue; }
+            if (!$required && ($file === null || ($file['error'] ?? null) === UPLOAD_ERR_NO_FILE)) {
+                continue;
+            }
             if (!is_array($file) || ($file['error'] ?? null) !== UPLOAD_ERR_OK || !is_string($file['tmp_name'] ?? null) || !is_uploaded_file($file['tmp_name'])) {
                 throw new InvalidArgumentException('Please upload all three product images when adding a product.');
             }
             $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
             $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-            if (!isset($extensions[$mime]) || !is_int($file['size']) || $file['size'] < 1 || $file['size'] > 5 * 1024 * 1024 || @getimagesize($file['tmp_name']) === false) {
+            if (!isset($extensions[$mime]) || !is_int($file['size']) || $file['size'] < 1 || $file['size'] > 5 * 1024 * 1024 || @ getimagesize($file['tmp_name']) === false) {
                 throw new InvalidArgumentException('Each image must be a valid JPG, PNG, or WebP up to 5 MiB.');
             }
             if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
@@ -280,7 +331,9 @@ class AdminController
         $id = null;
         $form = null;
         try {
-            if ($this->signedInAdmin() === null) { return; }
+            if ($this->signedInAdmin() === null) {
+                return;
+            }
             // Step: Validate the form token after checking administrator access.
             $this->csrf();
             $id = $rawId === null ? null : $this->positiveId($rawId);
@@ -294,8 +347,14 @@ class AdminController
             $_SESSION['admin_success'] = $id === null ? 'Product added.' : 'Product updated. Existing variant stock was kept.';
             Flight::redirect('/admin#admin-products', 303);
         } catch (Throwable $error) {
-            foreach ($uploaded as $path) { if (is_file($path)) { unlink($path); } }
-            if ($form !== null) { $_SESSION['admin_product_values'] = $form; }
+            foreach ($uploaded as $path) {
+                if (is_file($path)) {
+                    unlink($path);
+                }
+            }
+            if ($form !== null) {
+                $_SESSION['admin_product_values'] = $form;
+            }
             $this->failure($error, $id === null ? '/admin?modal=add-product' : '/admin?modal=edit-product&product_id=' . $id);
         }
     }
@@ -305,7 +364,9 @@ class AdminController
     {
         $productId = null;
         try {
-            if ($this->signedInAdmin() === null) { return; }
+            if ($this->signedInAdmin() === null) {
+                return;
+            }
             // Step: Validate the form token after checking administrator access.
             $this->csrf();
             $productId = $this->positiveId($id);
@@ -322,13 +383,17 @@ class AdminController
     public function deleteProduct(string $id): void
     {
         try {
-            if ($this->signedInAdmin() === null) { return; }
+            if ($this->signedInAdmin() === null) {
+                return;
+            }
             // Step: Validate the form token after checking administrator access.
             $this->csrf();
             (new Product())->deleteProduct($this->positiveId($id));
             $_SESSION['admin_success'] = 'Product deleted.';
             Flight::redirect('/admin#admin-products', 303);
-        } catch (Throwable $error) { $this->failure($error, '/admin#admin-products'); }
+        } catch (Throwable $error) {
+            $this->failure($error, '/admin#admin-products');
+        }
     }
 
     // Flow: Check administrator access and delegate status rules to the order workflow.
@@ -336,14 +401,18 @@ class AdminController
     {
         $orderId = null;
         try {
-            if ($this->signedInAdmin() === null) { return; }
+            if ($this->signedInAdmin() === null) {
+                return;
+            }
             // Step: Validate the form token after checking administrator access.
             $this->csrf();
             $orderId = $this->positiveId($id);
             (new Admin())->updateOrderStatus($orderId, $this->text($_POST['status'] ?? null));
             $_SESSION['admin_success'] = 'Order status updated.';
             Flight::redirect('/admin?modal=order&id=' . $orderId, 303);
-        } catch (Throwable $error) { $this->failure($error, $orderId === null ? '/admin' : '/admin?modal=order&id=' . $orderId); }
+        } catch (Throwable $error) {
+            $this->failure($error, $orderId === null ? '/admin' : '/admin?modal=order&id=' . $orderId);
+        }
     }
 
     // Flow: Store a safe validation message or generic failure before redirecting.

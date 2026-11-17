@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Orders;
 
 final class CashOnDeliveryWorkflow extends AbstractOrderWorkflow
@@ -6,13 +7,26 @@ final class CashOnDeliveryWorkflow extends AbstractOrderWorkflow
     // Flow: Return the allowed statuses for cash on delivery.
     public function statuses(): array
     {
-        return ['Placed order', 'Confirmed', 'Preparing', 'Delivery', 'Completed', 'Cancelled'];
+        return [
+            'Placed order',
+            'Confirmed',
+            'Preparing',
+            'Delivery',
+            'Completed',
+            'Cancelled'
+        ];
     }
 
     // Flow: Return the customer tracking labels for cash on delivery.
     protected function trackingSteps(): array
     {
-        return ['Placed order', 'Order confirmed', 'Preparing your order', 'Delivery', 'Completed'];
+        return [
+            'Placed order',
+            'Order confirmed',
+            'Preparing your order',
+            'Delivery',
+            'Completed'
+        ];
     }
 
     // Flow: Map statuses to tracking progress for cash on delivery.

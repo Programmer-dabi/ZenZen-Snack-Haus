@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Models\Cart;
@@ -22,7 +23,17 @@ class OrderController
 
         // Step 1: Read customer details and prepare field-specific validation errors.
         $values = [];
-        foreach (['name', 'phone_number', 'email', 'payment_method', 'pickup_at', 'notes', 'barangay', 'street', 'house_no'] as $field) {
+        foreach ([
+            'name',
+            'phone_number',
+            'email',
+            'payment_method',
+            'pickup_at',
+            'notes',
+            'barangay',
+            'street',
+            'house_no'
+        ] as $field) {
             $values[$field] = is_string($_POST[$field] ?? null) ? trim($_POST[$field], " \t\n\r\v") : '';
         }
         $errors = [];

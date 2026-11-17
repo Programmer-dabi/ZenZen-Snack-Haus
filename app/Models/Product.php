@@ -1,16 +1,33 @@
 <?php
+
 namespace App\Models;
 
 use PDO;
 
 class Product extends Model
 {
-
-    public const CATEGORIES = ['Milo Series', 'Snacks', 'Fruit Drinks', 'Mix-n-Match','Bun-Saya', 'Matcha Series', 'Coffee Series'];
+    public const CATEGORIES = [
+        'Milo Series',
+        'Snacks',
+        'Fruit Drinks',
+        'Mix-n-Match',
+        'Bun-Saya',
+        'Matcha Series',
+        'Coffee Series'
+    ];
     public const FLAVOUR_CATEGORIES = ['Fruit Drinks', 'Mix-n-Match'];
     public const SIDE_SNACKS = ['Fries', 'Cheese stick', 'Kikiam', 'Fishball', 'Siomai', 'Pancake'];
     public const ICE_LEVELS = ['regular' => 'Regular ice', 'less' => 'Less ice', 'hot' => 'Hot coffee'];
-    public const FLAVOURS = ['Green Apple', 'Grapes', 'Lychee', 'Mango', 'Blueberry', 'Watermelon', 'Strawberry', 'Orange'];
+    public const FLAVOURS = [
+        'Green Apple',
+        'Grapes',
+        'Lychee',
+        'Mango',
+        'Blueberry',
+        'Watermelon',
+        'Strawberry',
+        'Orange'
+    ];
 
     // Flow: Validate the unavailable-flavour list before encoding it for storage.
     public static function encodeUnavailableFlavours(mixed $values): ?string
@@ -30,8 +47,9 @@ class Product extends Model
     public static function flavourOptions(?string $unavailable): array
     {
         $blocked = $unavailable === null ? [] : json_decode($unavailable, true, 512, JSON_THROW_ON_ERROR);
-        return array_map(static fn(string $name): array => [
-            'name' => $name, 'available' => !in_array($name, $blocked, true),
+        return array_map(static fn (string $name): array => [
+            'name' => $name,
+            'available' => !in_array($name, $blocked, true),
         ], self::FLAVOURS);
     }
 
@@ -82,8 +100,9 @@ class Product extends Model
     public static function sideSnackOptions(?string $unavailable): array
     {
         $blocked = $unavailable === null ? [] : json_decode($unavailable, true, 512, JSON_THROW_ON_ERROR);
-        return array_map(static fn(string $name): array => [
-            'name' => $name, 'available' => !in_array($name, $blocked, true),
+        return array_map(static fn (string $name): array => [
+            'name' => $name,
+            'available' => !in_array($name, $blocked, true),
         ], self::SIDE_SNACKS);
     }
 
@@ -106,7 +125,7 @@ class Product extends Model
         }
     }
 
-         // 1. Insert the main product.
+    // 1. Insert the main product.
     // Flow: Save the main product fields with PDO parameters and return its numeric ID.
     public function createProduct(array $data): int
     {
@@ -118,14 +137,15 @@ class Product extends Model
         $stmt = $this->connection()->prepare($sql);
 
         $unavailableFlavours = $data['unavailable_flavours'] ?? null;
-        $stmt->execute([$data['product_name'],
+        $stmt->execute([
+            $data['product_name'],
             $data['category'],
             $data['description'],
             $data['base_price'],
             $data['availability'],
             $unavailableFlavours,
-            $data['unavailable_side_snacks'] ?? null]);
-
+            $data['unavailable_side_snacks'] ?? null
+        ]);
 
         $productId = (int) $this->connection()->lastInsertId();
 
@@ -134,62 +154,68 @@ class Product extends Model
         return $productId;
     }
 
-
     // 2. Insert one product image.
     // Flow: Store one validated image path and its display order.
-    public function addImage(int $productId,string $imagePath,int $imageOrder): void {
+    public function addImage(int $productId, string $imagePath, int $imageOrder): void
+    {
         $sql = "INSERT INTO product_images
                 (product_id, image_path, image_order)
                 VALUES (?, ?, ?)";
 
         $stmt = $this->connection()->prepare($sql);
 
-        $stmt->execute([$productId,
+        $stmt->execute([
+            $productId,
             $imagePath,
-            $imageOrder]);
+            $imageOrder
+        ]);
 
         $stmt->closeCursor();
     }
 
-
     // 3. Insert one add-on.
     // Flow: Store one add-on name and price for its product.
-    public function addAddon(int $productId,string $addonName,float $addonPrice): void {
+    public function addAddon(int $productId, string $addonName, float $addonPrice): void
+    {
         $sql = "INSERT INTO product_addons
                 (product_id, addon_name, addon_price)
                 VALUES (?, ?, ?)";
 
         $stmt = $this->connection()->prepare($sql);
 
-        $stmt->execute([$productId,
+        $stmt->execute([
+            $productId,
             $addonName,
-            $addonPrice]);
+            $addonPrice
+        ]);
 
         $stmt->closeCursor();
     }
 
-
     // 4. Insert one size variant.
     // Flow: Store one product variant and its initial stock.
-    public function addVariant(int $productId,string $sizeOz,float $price,int $stock): void {
+    public function addVariant(int $productId, string $sizeOz, float $price, int $stock): void
+    {
         $sql = "INSERT INTO product_variants
                 (product_id, size_oz, price, stock_quantity)
                 VALUES (?, ?, ?, ?)";
 
         $stmt = $this->connection()->prepare($sql);
 
-        $stmt->execute([$productId,
+        $stmt->execute([
+            $productId,
             $sizeOz,
             $price,
-            $stock]);
+            $stock
+        ]);
 
         $stmt->closeCursor();
     }
 
-
     // 5. Coordinate all inserts in one transaction.
     // Flow: Save a product, images, add-ons, and variants together in one transaction.
-    public function createComplete(array $data,array $images,array $addons,array $variants): int {
+    public function createComplete(array $data, array $images, array $addons, array $variants): int
+    {
         $this->connection()->beginTransaction();
 
         try {
@@ -250,14 +276,27 @@ class Product extends Model
             if ($exists === null) {
                 throw new \InvalidArgumentException('Product not found.');
             }
-            $stmt = $this->connection()->prepare('UPDATE products SET product_name = ?, category = ?, description = ?, base_price = ?, availability = ?, unavailable_flavours = ?, unavailable_side_snacks = ? WHERE id = ?');
+            $stmt = $this->connection()->prepare('UPDATE products 
+            SET product_name = ?, category = ?, description = ?, 
+            base_price = ?, availability = ?, unavailable_flavours = ?, unavailable_side_snacks = ? 
+            WHERE id = ?');
             $unavailableFlavours = $data['unavailable_flavours'] ?? null;
-            $stmt->execute([$data['product_name'], $data['category'], $data['description'], $data['base_price'], $data['availability'], $unavailableFlavours, $data['unavailable_side_snacks'] ?? null, $id]);
+            $stmt->execute([
+                $data['product_name'],
+                $data['category'],
+                $data['description'],
+                $data['base_price'],
+                $data['availability'],
+                $unavailableFlavours,
+                $data['unavailable_side_snacks'] ?? null,
+                $id
+            ]);
             $stmt->closeCursor();
 
             foreach (['product_variants' => $variants, 'product_addons' => $addons] as $table => $rows) {
                 // Table names come only from the fixed map above.
-                $stmt = $this->connection()->prepare("SELECT id FROM $table WHERE product_id = ? FOR UPDATE");
+                $stmt = $this->connection()->prepare("SELECT id 
+                FROM $table WHERE product_id = ? FOR UPDATE");
                 $stmt->execute([$id]);
                 $remaining = array_fill_keys(array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'), true);
                 $stmt->closeCursor();
@@ -270,14 +309,18 @@ class Product extends Model
                     if ($table === 'product_variants') {
                         if ($rowId) {
                             // Existing inventory changes only through the variant stock form.
-                            $stmt = $this->connection()->prepare('UPDATE product_variants SET size_oz = ?, price = ? WHERE id = ? AND product_id = ?');
+                            $stmt = $this->connection()->prepare('UPDATE product_variants 
+                            SET size_oz = ?, price = ? WHERE id = ? AND product_id = ?');
                             $stmt->execute([$row['size_oz'], $row['price'], $rowId, $id]);
                             $stmt->closeCursor();
                         } else {
                             $this->addVariant($id, $row['size_oz'], $row['price'], $row['stock']);
                         }
                     } elseif ($rowId) {
-                        $stmt = $this->connection()->prepare('UPDATE product_addons SET addon_name = ?, addon_price = ? WHERE id = ? AND product_id = ?');
+                        $stmt = $this->connection()->prepare('UPDATE product_addons 
+                        SET addon_name = ?, addon_price = ? 
+                        WHERE id = ? 
+                        AND product_id = ?');
                         $stmt->execute([$row['name'], $row['price'], $rowId, $id]);
                         $stmt->closeCursor();
                     } else {
@@ -288,13 +331,17 @@ class Product extends Model
                     }
                 }
                 foreach (array_diff_key($remaining, $used) as $rowId => $_) {
-                    $stmt = $this->connection()->prepare("DELETE FROM $table WHERE id = ? AND product_id = ?");
+                    $stmt = $this->connection()->prepare("DELETE FROM $table 
+                    WHERE id = ? 
+                    AND product_id = ?");
                     $stmt->execute([$rowId, $id]);
                     $stmt->closeCursor();
                 }
             }
             foreach ($images as $image) {
-                $stmt = $this->connection()->prepare('DELETE FROM product_images WHERE product_id = ? AND image_order = ?');
+                $stmt = $this->connection()->prepare('DELETE FROM product_images 
+                WHERE product_id = ? 
+                AND image_order = ?');
                 $stmt->execute([$id, $image['order']]);
                 $stmt->closeCursor();
                 $this->addImage($id, $image['path'], $image['order']);
@@ -348,7 +395,8 @@ class Product extends Model
     }
 
     // Flow: Load menu products and attach their images.
-    public function getProductAll(string $search = '', string $category = '') {
+    public function getProductAll(string $search = '', string $category = '')
+    {
         if (mb_strlen($search) > 200) {
             throw new \InvalidArgumentException('Search must be 200 characters or fewer.');
         }
@@ -381,7 +429,6 @@ class Product extends Model
             FROM products p
             $where
             ORDER BY p.created_at DESC, p.id DESC";
-
 
         $result = $this->connection()->prepare($sqlmaintable);
         $result->execute($values);
@@ -533,7 +580,7 @@ class Product extends Model
 
         $imageStmt = $this->connection()->prepare($sqlImage);
 
-        foreach ($products as $productId => &$product) {
+        foreach ($products as $productId => & $product) {
             $imageStmt->execute([$productId]);
 
             $imageResult = $imageStmt;
@@ -561,13 +608,12 @@ class Product extends Model
 
         $addonStmt = $this->connection()->prepare($addonSql);
 
-        foreach ($products as $productId => &$product) {
+        foreach ($products as $productId => & $product) {
 
             // Get variants belonging to this product
             $variantStmt->execute([$productId]);
 
-            $product['variants'] = $variantStmt
-                ->fetchAll(PDO::FETCH_ASSOC);
+            $product['variants'] = $variantStmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Get add-ons belonging to this product
             $addonStmt->execute([$productId]);
@@ -577,8 +623,7 @@ class Product extends Model
             $product['side_snacks'] = $product['category'] === 'Mix-n-Match'
                 ? self::sideSnackOptions($product['unavailable_side_snacks']) : [];
 
-            $product['addons'] = $addonStmt
-                ->fetchAll(PDO::FETCH_ASSOC);
+            $product['addons'] = $addonStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         unset($product);
@@ -589,5 +634,4 @@ class Product extends Model
         return $products;
     }
 }
-
 ?>

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Models\Cart;
@@ -142,7 +143,10 @@ class CartController
         } catch (Throwable $error) {
             error_log('Cart update failed (' . get_class($error) . ', code ' . $error->getCode() . ').');
             if ($wantsJson) {
-                Flight::json(['success' => false, 'message' => 'Could not update your cart. Please try again.'], 500);
+                Flight::json([
+                    'success' => false,
+                    'message' => 'Could not update your cart. Please try again.'
+                ], 500);
                 return;
             }
             $_SESSION['cart_error'] = 'Could not update your cart. Please try again.';
@@ -155,7 +159,7 @@ class CartController
     {
         $items = $cart->getItems();
         $subtotalCentavos = 0;
-        foreach ($items as &$item) {
+        foreach ($items as & $item) {
             $lineCentavos = (int) round($item['unit_price'] * 100) * $item['quantity'];
             $item['line_total'] = $lineCentavos / 100;
             $subtotalCentavos += $lineCentavos;

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Orders;
 
 final class GcashWorkflow extends AbstractOrderWorkflow
@@ -6,13 +7,28 @@ final class GcashWorkflow extends AbstractOrderWorkflow
     // Flow: Return the allowed statuses for GCash.
     public function statuses(): array
     {
-        return ['Placed order', 'Confirmed', 'Payed', 'Preparing', 'On delivery', 'Completed', 'Cancelled'];
+        return [
+            'Placed order',
+            'Confirmed',
+            'Payed',
+            'Preparing',
+            'On delivery',
+            'Completed',
+            'Cancelled'
+        ];
     }
 
     // Flow: Return the customer tracking labels for GCash.
     protected function trackingSteps(): array
     {
-        return ['Placed order', 'Order confirmed', 'Payed', 'Preparing your order', 'On delivery', 'Completed'];
+        return [
+            'Placed order',
+            'Order confirmed',
+            'Payed',
+            'Preparing your order',
+            'On delivery',
+            'Completed'
+        ];
     }
 
     // Flow: Map statuses to tracking progress for GCash.

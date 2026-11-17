@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use InvalidArgumentException;
@@ -39,14 +40,15 @@ class Cart extends Model
     // Flow: Validate the selection, calculate its price, and save or combine the cart item.
     public function addToCart(
         int $productId,
-        ?int $variantId = null,
+            ?int $variantId = null,
         array $addonIds = [],
         int $quantity = 1,
-        ?string $sideSnack = null,
-        ?int $sugarLevel = null,
-        ?string $flavour = null,
-        ?string $iceLevel = null
-    ): int {
+            ?string $sideSnack = null,
+            ?int $sugarLevel = null,
+            ?string $flavour = null,
+            ?string $iceLevel = null
+    ): int
+    {
         if ($this->userId === null) {
             throw new InvalidArgumentException('Please sign in to add items to your cart.');
         }
@@ -107,7 +109,7 @@ class Cart extends Model
 
             // Step: Combine only selections with the same product options and flavour.
             $existing = $this->findSelection($productId, $variantId, $addonIds, $sideSnack, $sugarLevel, $flavour, $iceLevel);
-            $newQuantity = (int) ($existing['quantity'] ?? 0) + $quantity;
+            $newQuantity = (int)($existing['quantity'] ?? 0) + $quantity;
             $this->assertQuantity($newQuantity);
             if ($variant !== null && $newQuantity > (int) $variant['stock_quantity']) {
                 throw new InvalidArgumentException('Not enough stock for the selected variant.');
@@ -115,7 +117,7 @@ class Cart extends Model
 
             $variantLabel = $variant['size_oz'] ?? null;
             $addonJson = json_encode(array_map(
-                static fn(array $addon): array => [
+                static fn (array $addon): array => [
                     'id' => (int) $addon['id'],
                     'name' => $addon['addon_name'],
                     'price' => (float) $addon['addon_price'],
@@ -126,11 +128,21 @@ class Cart extends Model
             if ($existing !== null) {
                 $itemId = (int) $existing['id'];
                 $stmt = $this->connection()->prepare(
-                    'UPDATE cart_items SET product_name = ?, variant_label = ?, addons = ?,
-                     unit_price = ?, quantity = ? WHERE id = ? AND user_id = ?'
+                    'UPDATE cart_items 
+                    SET product_name = ?, variant_label = ?, addons = ?,
+                    unit_price = ?, quantity = ? 
+                    WHERE id = ? 
+                    AND user_id = ?'
                 );
-                $stmt->execute([$product['product_name'], $variantLabel, $addonJson,
-                    $unitPrice, $newQuantity, $itemId, $this->userId]);
+                $stmt->execute([
+                    $product['product_name'],
+                    $variantLabel,
+                    $addonJson,
+                    $unitPrice,
+                    $newQuantity,
+                    $itemId,
+                    $this->userId
+                ]);
             } else {
                 $stmt = $this->connection()->prepare(
                     'INSERT INTO cart_items
@@ -138,8 +150,20 @@ class Cart extends Model
                          side_snack, sugar_level, unit_price, quantity, flavour, ice_level)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                 );
-                $stmt->execute([$this->userId, $productId, $product['product_name'],
-                    $variantId, $variantLabel, $addonJson, $sideSnack, $sugarLevel, $unitPrice, $newQuantity, $flavour, $iceLevel]);
+                $stmt->execute([
+                    $this->userId,
+                    $productId,
+                    $product['product_name'],
+                    $variantId,
+                    $variantLabel,
+                    $addonJson,
+                    $sideSnack,
+                    $sugarLevel,
+                    $unitPrice,
+                    $newQuantity,
+                    $flavour,
+                    $iceLevel
+                ]);
             }
             $itemId = $existing !== null ? $itemId : (int) $this->connection()->lastInsertId();
             $stmt->closeCursor();
@@ -216,7 +240,7 @@ class Cart extends Model
                      WHERE i.product_id = c.product_id ORDER BY i.image_order ASC LIMIT 1) AS image_path
              FROM cart_items c JOIN products p ON p.id = c.product_id
              WHERE c.user_id = ? ORDER BY c.created_at, c.id'
-            . ($forUpdate ? ' FOR UPDATE' : '')
+                . ($forUpdate ? ' FOR UPDATE' : '')
         );
         $stmt->execute([$this->userId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -298,7 +322,7 @@ class Cart extends Model
     }
 
     // Flow: Convert a price to integer centavos for calculations.
-    private function toCentavos(string|int|float $price): int
+    private function toCentavos(string | int | float $price): int
     {
         return (int) round((float) $price * 100);
     }
@@ -359,7 +383,7 @@ class Cart extends Model
             "SELECT id, addon_name, addon_price FROM product_addons
              WHERE product_id = ? AND id IN ($placeholders) ORDER BY id"
         );
-        $stmt->execute([$productId, ...$addonIds]);
+        $stmt->execute([$productId, ... $addonIds]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         return $rows;

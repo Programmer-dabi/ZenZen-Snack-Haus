@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Orders;
 
 /** The behavior needed by admin status controls and customer order tracking. */

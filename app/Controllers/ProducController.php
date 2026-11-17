@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Controllers;
+
 use App\Models\Product;
 use App\Models\Cart;
 use App\Middleware\AuthMiddleware;
@@ -8,15 +10,19 @@ use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
 
-class ProducController{
-
-  private array $variantCategories = Product::CATEGORIES;
+class ProducController
+{
+    private array $variantCategories = Product::CATEGORIES;
     // Flow: Render the legacy product form with the current category and flavour allowlists.
-    public function index(){
-        Flight::render('addproduct.twig', ['allowed_categories' => Product::CATEGORIES, 'allowed_flavours' => Product::FLAVOURS]);
+    public function index()
+    {
+        Flight::render('addproduct.twig', [
+            'allowed_categories' => Product::CATEGORIES,
+            'allowed_flavours' => Product::FLAVOURS
+        ]);
     }
-    
- // Handle the product creation form.
+
+    // Handle the product creation form.
     // Flow: Validate and upload a product through the retained legacy creation method.
     public function add(): void
     {
@@ -60,10 +66,9 @@ class ProducController{
                 );
             }
 
-           $variants = [];
+            $variants = [];
 
             if (in_array($category, $this->variantCategories, true)) {
-
                 $sizes = $_POST['variant_oz'] ?? null;
                 $prices = $_POST['variant_price'] ?? null;
                 $stocks = $_POST['variant_stock'] ?? null;
@@ -86,7 +91,6 @@ class ProducController{
                 $usedSizes = [];
 
                 foreach ($sizes as $i => $sizeValue) {
-
                     $priceValue = $prices[$i] ?? null;
                     $stockValue = $stocks[$i] ?? null;
 
@@ -274,7 +278,6 @@ class ProducController{
             foreach (
                 ['image1', 'image2', 'image3'] as $index => $field
             ) {
-                
                 if (
                     !isset($_FILES[$field]) ||
                     !is_array($_FILES[$field]) ||
@@ -302,7 +305,7 @@ class ProducController{
 
                 if (
                     !isset($allowedMimeTypes[$mimeType]) ||
-                    @getimagesize($file['tmp_name']) === false
+                    @ getimagesize($file['tmp_name']) === false
                 ) {
                     throw new InvalidArgumentException(
                         'Use a valid JPG, PNG, or WebP image.'
@@ -379,85 +382,81 @@ class ProducController{
         }
     }
 
-// Flow: Load a product and render its available choices for the customer.
-public function openProduct($id): void
-{
-    try {
-        $productModel = new Product();
+    // Flow: Load a product and render its available choices for the customer.
+    public function openProduct($id): void
+    {
+        try {
+            $productModel = new Product();
 
-        $products = $productModel->getProduct('id', $id);
+            $products = $productModel->getProduct('id', $id);
 
-        // Check whether the product exists.
-        if (empty($products)) {
-            Flight::halt(404, 'Product not found.');
+            // Check whether the product exists.
+            if (empty($products)) {
+                Flight::halt(404, 'Product not found.');
+                return;
+            }
+
+            // Get the single product from the array.
+            // $product = reset($products);
+            // echo '<pre>';
+            // var_dump($products);
+            // echo '</pre>';
+            // die();
+            Flight::render('product.twig', [
+                'products' => $products,
+                'is_logged_in' => AuthMiddleware::isLoggedIn(),
+                'cart_count' => (new Cart())->getCount(),
+            ]);
+
+        } catch (InvalidArgumentException $error) {
+            Flight::halt(400, $error->getMessage());
+            return;
+
+        } catch (Throwable $error) {
+            error_log($error->__toString());
+
+            Flight::halt(500, $error->getMessage());
             return;
         }
-
-        // Get the single product from the array.
-        // $product = reset($products);
-        // echo '<pre>';
-        // var_dump($products);
-        // echo '</pre>';
-        // die();
-
-        Flight::render('product.twig', [
-            'products' => $products,
-            'is_logged_in' => AuthMiddleware::isLoggedIn(),
-            'cart_count' => (new Cart())->getCount(),
-        ]);
-
-    } catch (InvalidArgumentException $error) {
-        Flight::halt(400, $error->getMessage());
-        return;
-
-    } catch (Throwable $error) {
-        error_log($error->__toString());
-
-        Flight::halt(500, $error->getMessage());
-        return;
     }
-}
 
     // Flow: Return product details using the existing Products JSON response key.
     public function passData($id)
     {
         header('Content-Type: application/json');
 
-
-        
         try {
-        $productModel = new Product();
+            $productModel = new Product();
 
-        $products = $productModel->getProduct('id', $id);
+            $products = $productModel->getProduct('id', $id);
 
-        // Check whether the product exists.
-        if (empty($products)) {
-            Flight::halt(404, 'Product not found.');
+            // Check whether the product exists.
+            if (empty($products)) {
+                Flight::halt(404, 'Product not found.');
+                return;
+            }
+
+            // Get the single product from the array.
+            // $product = reset($products);
+            // echo '<pre>';
+            // var_dump($products);
+            // echo '</pre>';
+            // die();
+            echo json_encode([
+                'Products' => $products,
+                // 'name' => 'Spanish Latte'
+            ]);
+
+        } catch (InvalidArgumentException $error) {
+            Flight::halt(400, $error->getMessage());
+            return;
+
+        } catch (Throwable $error) {
+            error_log($error->__toString());
+
+            Flight::halt(500, $error->getMessage());
             return;
         }
-
-        // Get the single product from the array.
-        // $product = reset($products);
-        // echo '<pre>';
-        // var_dump($products);
-        // echo '</pre>';
-        // die();
-
-        echo json_encode([
-            'Products' => $products,
-            // 'name' => 'Spanish Latte'
-        ]);
-
-    } catch (InvalidArgumentException $error) {
-        Flight::halt(400, $error->getMessage());
-        return;
-
-    } catch (Throwable $error) {
-        error_log($error->__toString());
-
-        Flight::halt(500, $error->getMessage());
-        return;
-    }
     }
 
     // Flow: Require login and validate posted JSON before asking Cart to save the selection.
@@ -549,5 +548,4 @@ public function openProduct($id): void
         }
     }
 }
-
 ?>

@@ -8,8 +8,8 @@
   </head>
   <body>
     {% include 'components/header.twig' %}
-    
-    <section class="login-page" id="login">
+
+    <section class="login-page" id="register">
 
       <div class="login-image login-image-photo">
         <a class="logo logo-light" href="/">
@@ -48,11 +48,11 @@
           Email address
           <input placeholder="you@email.com" required="" type="email"  name = "email">
         </label>
-          <label>
+        <label>
           Name
           <input placeholder="Enter your name" required="" type="text" name = "name">
         </label>
-          <label>
+        <label>
           Enter your phone number
           <input placeholder="Phone Number" required="" type="number" name="phonenum">
         </label>
@@ -62,8 +62,14 @@
             placeholder="Enter your password"
             required=""
             type="password"
+            autocomplete="new-password"
             name="password"
-          >
+            id="password"
+          />
+        </label>
+        <label class="auth-checkbox">
+          <input type="checkbox" data-password-toggle="password" aria-controls="password" />
+          Show password
         </label>
         <label>
           Confirm Password
@@ -71,15 +77,23 @@
             placeholder="Confirm your password"
             required=""
             type="password"
+            autocomplete="new-password"
             name="confpassword"
+            id="confirm-password"
           />
+
+        </label>
+        <label class="auth-checkbox">
+          <input type="checkbox" data-password-toggle="confirm-password" aria-controls="confirm-password" />
+          Show confirmation password
         </label>
         <input type="submit" value="Sign up →" class="primary" style="text-align: center">
       </form>
     </section>
-    
-            {% include 'components/footer.twig' %}
 
+    {% include 'components/footer.twig' %}
+
+    <script defer src="{{base_url}}public/js/auth.js"></script>
     <script type="module" src="{{base_url}}public/js/main.js"></script>
   </body>
 </html>

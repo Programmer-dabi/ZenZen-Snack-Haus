@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+
   // Step: Open the requested admin dialog without changing its server access checks.
   const modal = document.querySelector('[data-admin-modal]');
   if (!modal) return;
