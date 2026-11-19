@@ -90,16 +90,21 @@ class AuthenController
             try {
                 $user = new User();
                 // The User model hashes the password and inserts the account using a prepared statement.
+                
+                if($user->getByEmail($email) != null){
+                 \Flight::render('login.twig', [
+                    'err' => 'User Exist please log in'
+                ]);
+                return;
+                }
                 $user->register($name, $email, $phonenum, $password);
 
                 $this->renderLogin(['succ' => 'Registration Complete']);
             // This existing registration error path prints the exception and ends the request.
             } catch (\Exception $e) {
-                echo '<pre>';
-                echo $e->getMessage();
-                echo '</pre>';
-
-                die();
+                \Flight::render('register.twig', [
+                'err' => 'Error sir '.$e ,
+            ]);
             }
         } else {
             // Show the registration form, including a validation message when one is supplied.

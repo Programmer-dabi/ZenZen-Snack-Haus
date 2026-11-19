@@ -50,6 +50,7 @@
         {# Display one-time success feedback after a saved management change. #}{% if admin_success %}
           <p class="admin-notice" role="status">{{ admin_success }}</p>
         {% endif %}
+        
         <div class="admin-welcome">
           <div>
             <h2>Hello, {{ current_user.name }}.</h2>
@@ -349,7 +350,8 @@
     {# Include the management dialog only when the controller has validated and loaded the requested selection. #}{% if modal %}
       {% include 'admin-modals.twig' %}
     {% endif %}
-    {# Load shared page interactions; each initializer checks that its own page controls exist. #}<script type="module" src="{{ base_url }}public/js/main.js"></script>
+    {# Load shared page interactions; each initializer checks that its own page controls exist. #}
+    <script type="module" src="{{ base_url }}public/js/main.js"></script>
     <script type="module" src="{{ base_url }}public/js/admin.js"></script>
   </body>
 </html>

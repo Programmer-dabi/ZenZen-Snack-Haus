@@ -8,7 +8,6 @@
   </head>
   <body>
     {# Reuse the shop header; the controller-provided cart count populates its badges. #}{% include 'components/header.twig' %}
-
     <section class="login-page" id="register">
 
       <div class="login-image login-image-photo">
@@ -44,6 +43,7 @@
             <a href='/login'> Login here </a>
           </p>
         </div>
+          <p role="alert">{{ err }}</p>
         <label>
           Email address
           <input placeholder="you@email.com" required="" type="email"  name = "email">
